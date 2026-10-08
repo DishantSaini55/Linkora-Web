@@ -10,7 +10,13 @@ import {
 import { Button } from "@/components/ui";
 import { LikedPosts } from "@/_root/pages";
 import { useUserContext } from "@/context/AuthContext";
-import { useGetUserById } from "@/lib/react-query/queries";
+import {
+  useCreateFollow,
+  useDeleteFollow,
+  useGetFollowCounts,
+  useGetFollowRelationship,
+  useGetUserById,
+} from "@/lib/react-query/queries";
 import { GridPostList, Loader } from "@/components/shared";
 
 interface StabBlockProps {
@@ -36,6 +42,10 @@ const Profile = () => {
     isError,
     refetch,
   } = useGetUserById(id || "");
+  const { data: follow } = useGetFollowRelationship(user.id, id);
+  const { data: followCounts } = useGetFollowCounts(id);
+  const { mutate: createFollow, isLoading: isCreating } = useCreateFollow();
+  const { mutate: deleteFollow, isLoading: isDeleting } = useDeleteFollow();
 
   if (isLoading)
     return (
@@ -81,8 +91,8 @@ const Profile = () => {
 
             <div className="flex gap-8 mt-10 items-center justify-center xl:justify-start flex-wrap z-20">
               <StatBlock value={currentUser.posts.length} label="Posts" />
-              <StatBlock value={20} label="Followers" />
-              <StatBlock value={20} label="Following" />
+              <StatBlock value={followCounts?.followers || 0} label="Followers" />
+              <StatBlock value={followCounts?.following || 0} label="Following" />
             </div>
 
             <p className="small-medium md:base-medium text-center xl:text-left mt-7 max-w-screen-sm">
@@ -109,8 +119,26 @@ const Profile = () => {
               </Link>
             </div>
             <div className={`${user.id === id && "hidden"}`}>
-              <Button type="button" className="shad-button_primary px-8">
-                Follow
+              <Button
+                type="button"
+                className="shad-button_primary px-8"
+                disabled={isCreating || isDeleting}
+                onClick={() => {
+                  if (follow) {
+                    deleteFollow({
+                      followId: follow.$id,
+                      follower: user.id,
+                      following: currentUser.$id,
+                    });
+                  } else {
+                    createFollow({
+                      follower: user.id,
+                      following: currentUser.$id,
+                      followerAccountId: user.accountId,
+                    });
+                  }
+                }}>
+                {follow ? "Following" : "Follow"}
               </Button>
             </div>
           </div>

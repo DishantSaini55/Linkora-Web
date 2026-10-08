@@ -18,4 +18,6 @@ export enum QUERY_KEYS {
   //  SEARCH KEYS
   SEARCH_POSTS = "getSearchPosts",
   GET_NOTIFICATIONS = "getNotifications",
+  GET_FOLLOW_RELATIONSHIP = "getFollowRelationship",
+  GET_FOLLOW_COUNTS = "getFollowCounts",
 }

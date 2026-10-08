@@ -29,6 +29,10 @@ import {
   createNotification,
   getNotifications,
   markNotificationsRead,
+  getFollowRelationship,
+  getFollowCounts,
+  createFollow,
+  deleteFollow,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -240,6 +244,81 @@ export const useMarkNotificationsRead = () => {
     onSuccess: (_, recipient) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_NOTIFICATIONS, recipient],
+      });
+    },
+  });
+};
+
+export const useGetFollowRelationship = (
+  follower?: string,
+  following?: string
+) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_FOLLOW_RELATIONSHIP, follower, following],
+    queryFn: () => getFollowRelationship(follower || "", following || ""),
+    enabled: !!follower && !!following && follower !== following,
+  });
+
+export const useGetFollowCounts = (userId?: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_FOLLOW_COUNTS, userId],
+    queryFn: () => getFollowCounts(userId || ""),
+    enabled: !!userId,
+  });
+
+export const useCreateFollow = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      follower,
+      following,
+      followerAccountId,
+    }: {
+      follower: string;
+      following: string;
+      followerAccountId: string;
+    }) => createFollow(follower, following, followerAccountId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          QUERY_KEYS.GET_FOLLOW_RELATIONSHIP,
+          variables.follower,
+          variables.following,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_FOLLOW_COUNTS, variables.following],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_FOLLOW_COUNTS, variables.follower],
+      });
+    },
+  });
+};
+
+export const useDeleteFollow = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ followId }: {
+      followId: string;
+      follower: string;
+      following: string;
+    }) => deleteFollow(followId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          QUERY_KEYS.GET_FOLLOW_RELATIONSHIP,
+          variables.follower,
+          variables.following,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_FOLLOW_COUNTS, variables.following],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_FOLLOW_COUNTS, variables.follower],
       });
     },
   });

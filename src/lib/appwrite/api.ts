@@ -1,4 +1,4 @@
-import { ID, Query, Models } from "appwrite";
+import { ID, Permission, Query, Role, Models } from "appwrite";
 
 import {
   appwriteConfig,
@@ -8,6 +8,7 @@ import {
   storage,
   avatars,
   isNotificationsConfigured,
+  isFollowsConfigured,
 } from "./config";
 import { IUpdatePost, INewPost, INewUser, IUpdateUser } from "@/types";
 
@@ -441,6 +442,80 @@ export async function markNotificationsRead(recipient: string) {
     "/",
     "POST",
     { "Content-Type": "application/json" }
+  );
+}
+
+export async function getFollowRelationship(
+  follower: string,
+  following: string
+) {
+  if (!isFollowsConfigured) return null;
+
+  const result = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.followsCollectionId,
+    [
+      Query.equal("follower", follower),
+      Query.equal("following", following),
+      Query.limit(1),
+    ]
+  );
+
+  return result.documents[0] || null;
+}
+
+export async function getFollowCounts(userId: string) {
+  if (!isFollowsConfigured) return { followers: 0, following: 0 };
+
+  const [followers, following] = await Promise.all([
+    databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.followsCollectionId,
+      [Query.equal("following", userId), Query.limit(1)]
+    ),
+    databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.followsCollectionId,
+      [Query.equal("follower", userId), Query.limit(1)]
+    ),
+  ]);
+
+  return {
+    followers: followers.total,
+    following: following.total,
+  };
+}
+
+export async function createFollow(
+  follower: string,
+  following: string,
+  followerAccountId: string
+) {
+  if (!isFollowsConfigured) {
+    throw new Error("Follow collection is not configured.");
+  }
+
+  return databases.createDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.followsCollectionId,
+    ID.unique(),
+    { follower, following },
+    [
+      Permission.read(Role.any()),
+      Permission.delete(Role.user(followerAccountId)),
+    ]
+  );
+}
+
+export async function deleteFollow(followId: string) {
+  if (!isFollowsConfigured) {
+    throw new Error("Follow collection is not configured.");
+  }
+
+  return databases.deleteDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.followsCollectionId,
+    followId
   );
 }
 

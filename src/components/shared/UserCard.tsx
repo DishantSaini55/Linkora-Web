@@ -1,5 +1,12 @@
 import { Models } from "appwrite";
 import { Link } from "react-router-dom";
+import { useUserContext } from "@/context/AuthContext";
+import {
+  useCreateFollow,
+  useDeleteFollow,
+  useGetFollowRelationship,
+} from "@/lib/react-query/queries";
+import { useToast } from "@/components/ui/use-toast";
 
 import { Button } from "../ui/button";
 
@@ -8,6 +15,57 @@ type UserCardProps = {
 };
 
 const UserCard = ({ user }: UserCardProps) => {
+  const { user: currentUser } = useUserContext();
+  const { toast } = useToast();
+  const { data: follow } = useGetFollowRelationship(
+    currentUser.id,
+    user.$id
+  );
+  const { mutate: createFollow, isLoading: isCreating } = useCreateFollow();
+  const { mutate: deleteFollow, isLoading: isDeleting } = useDeleteFollow();
+  const isFollowing = !!follow;
+  const isBusy = isCreating || isDeleting;
+
+  const handleFollow = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isBusy) return;
+
+    if (follow) {
+      deleteFollow(
+        { followId: follow.$id, follower: currentUser.id, following: user.$id },
+        {
+          onError: (error) =>
+            toast({
+              title: "Unfollow failed",
+              description:
+                error instanceof Error ? error.message : "Please try again.",
+              variant: "destructive",
+            }),
+        }
+      );
+      return;
+    }
+
+    createFollow(
+      {
+        follower: currentUser.id,
+        following: user.$id,
+        followerAccountId: currentUser.accountId,
+      },
+      {
+        onError: (error) =>
+          toast({
+            title: "Follow failed",
+            description:
+              error instanceof Error ? error.message : "Please try again.",
+            variant: "destructive",
+          }),
+      }
+    );
+  };
+
   return (
     <Link to={`/profile/${user.$id}`} className="user-card">
       <img
@@ -25,8 +83,13 @@ const UserCard = ({ user }: UserCardProps) => {
         </p>
       </div>
 
-      <Button type="button" size="sm" className="shad-button_primary px-5">
-        Follow
+      <Button
+        type="button"
+        size="sm"
+        className="shad-button_primary px-5"
+        disabled={isBusy}
+        onClick={handleFollow}>
+        {isFollowing ? "Following" : "Follow"}
       </Button>
     </Link>
   );

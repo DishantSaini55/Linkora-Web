@@ -8,6 +8,7 @@ export const appwriteConfig = {
   userCollectionId: import.meta.env.VITE_APPWRITE_USER_COLLECTION_ID,
   postCollectionId: import.meta.env.VITE_APPWRITE_POST_COLLECTION_ID,
   savesCollectionId: import.meta.env.VITE_APPWRITE_SAVES_COLLECTION_ID,
+  followsCollectionId: import.meta.env.VITE_APPWRITE_FOLLOWS_COLLECTION_ID,
   notificationCollectionId:
     import.meta.env.VITE_APPWRITE_NOTIFICATION_COLLECTION_ID,
   notificationFunctionId:
@@ -29,6 +30,10 @@ export const isNotificationsConfigured =
   appwriteConfig.notificationCollectionId.length > 0 &&
   typeof appwriteConfig.notificationFunctionId === "string" &&
   appwriteConfig.notificationFunctionId.length > 0;
+
+export const isFollowsConfigured =
+  typeof appwriteConfig.followsCollectionId === "string" &&
+  appwriteConfig.followsCollectionId.length > 0;
 
 export const client = new Client();
 
