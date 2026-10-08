@@ -71,54 +71,50 @@ export async function signInAccount(user: { email: string; password: string }) {
 // ============================== GET ACCOUNT
 export async function getAccount() {
   try {
-    const currentAccount = await account.get();
-
-    return currentAccount;
+    return await account.get();
   } catch (error) {
-    console.log(error);
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === 401
+    ) {
+      return null;
+    }
+
+    throw error;
   }
 }
 
 // ============================== GET USER
 export async function getCurrentUser() {
-  try {
-    const currentAccount = await getAccount();
+  const currentAccount = await getAccount();
 
-    if (!currentAccount) throw Error;
+  if (!currentAccount) return null;
 
-    const currentUser = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId,
-      [Query.equal("accountId", currentAccount.$id)]
-    );
+  const currentUser = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.userCollectionId,
+    [Query.equal("accountId", currentAccount.$id)]
+  );
 
-    if (currentUser.documents.length > 0) return currentUser.documents[0];
+  if (currentUser.documents.length > 0) return currentUser.documents[0];
 
-    // A previous signup may have created the Auth account but failed before
-    // creating its profile. Repair that state once the user has a session.
-    const avatarUrl = avatars.getInitials(currentAccount.name);
-    return saveUserToDB({
-      accountId: currentAccount.$id,
-      name: currentAccount.name,
-      email: currentAccount.email,
-      username: currentAccount.email.split("@")[0],
-      imageUrl: avatarUrl,
-    });
-  } catch (error) {
-    console.log(error);
-    return null;
-  }
+  // A previous signup may have created the Auth account but failed before
+  // creating its profile. Repair that state once the user has a session.
+  const avatarUrl = avatars.getInitials(currentAccount.name);
+  return saveUserToDB({
+    accountId: currentAccount.$id,
+    name: currentAccount.name,
+    email: currentAccount.email,
+    username: currentAccount.email.split("@")[0],
+    imageUrl: avatarUrl,
+  });
 }
 
 // ============================== SIGN OUT
 export async function signOutAccount() {
-  try {
-    const session = await account.deleteSession("current");
-
-    return session;
-  } catch (error) {
-    console.log(error);
-  }
+  return account.deleteSession("current");
 }
 
 // ============================================================
@@ -214,41 +210,29 @@ export async function deleteFile(fileId: string) {
 
 // ============================== GET POSTS
 export async function searchPosts(searchTerm: string) {
-  try {
-    const posts = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.postCollectionId,
-      [Query.search("caption", searchTerm)]
-    );
-
-    if (!posts) throw Error;
-
-    return posts;
-  } catch (error) {
-    console.log(error);
-  }
+  return databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.postCollectionId,
+    [Query.search("caption", searchTerm)]
+  );
 }
 
-export async function getInfinitePosts({ pageParam }: { pageParam: number }) {
-  const queries: any[] = [Query.orderDesc("$updatedAt"), Query.limit(9)];
+export async function getInfinitePosts({
+  pageParam,
+}: {
+  pageParam?: unknown;
+}) {
+  const queries = [Query.orderDesc("$updatedAt"), Query.limit(9)];
 
-  if (pageParam) {
-    queries.push(Query.cursorAfter(pageParam.toString()));
+  if (typeof pageParam === "string" && pageParam.length > 0) {
+    queries.push(Query.cursorAfter(pageParam));
   }
 
-  try {
-    const posts = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.postCollectionId,
-      queries
-    );
-
-    if (!posts) throw Error;
-
-    return posts;
-  } catch (error) {
-    console.log(error);
-  }
+  return databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.postCollectionId,
+    queries
+  );
 }
 
 // ============================== GET POST BY ID
@@ -433,19 +417,11 @@ export async function getUserPosts(userId?: string) {
 
 // ============================== GET POPULAR POSTS (BY HIGHEST LIKE COUNT)
 export async function getRecentPosts() {
-  try {
-    const posts = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.postCollectionId,
-      [Query.orderDesc("$createdAt"), Query.limit(20)]
-    );
-
-    if (!posts) throw Error;
-
-    return posts;
-  } catch (error) {
-    console.log(error);
-  }
+  return databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.postCollectionId,
+    [Query.orderDesc("$createdAt"), Query.limit(20)]
+  );
 }
 
 // ============================================================
@@ -454,25 +430,17 @@ export async function getRecentPosts() {
 
 // ============================== GET USERS
 export async function getUsers(limit?: number) {
-  const queries: any[] = [Query.orderDesc("$createdAt")];
+  const queries = [Query.orderDesc("$createdAt")];
 
   if (limit) {
     queries.push(Query.limit(limit));
   }
 
-  try {
-    const users = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId,
-      queries
-    );
-
-    if (!users) throw Error;
-
-    return users;
-  } catch (error) {
-    console.log(error);
-  }
+  return databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.userCollectionId,
+    queries
+  );
 }
 
 // ============================== GET USER BY ID

@@ -4,15 +4,35 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { useUserContext } from "@/context/AuthContext";
 import { useSignOutAccount } from "@/lib/react-query/queries";
+import { useToast } from "@/components/ui/use-toast";
 
 const Topbar = () => {
   const navigate = useNavigate();
-  const { user } = useUserContext();
+  const { toast } = useToast();
+  const { user, setIsAuthenticated } = useUserContext();
   const { mutate: signOut, isSuccess } = useSignOutAccount();
 
   useEffect(() => {
-    if (isSuccess) navigate(0);
-  }, [isSuccess]);
+    if (isSuccess) {
+      setIsAuthenticated(false);
+      navigate("/sign-in", { replace: true });
+    }
+  }, [isSuccess, navigate, setIsAuthenticated]);
+
+  const handleSignOut = () => {
+    signOut(undefined, {
+      onError: (error) => {
+        toast({
+          title: "Logout failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Unable to end your session. Please try again.",
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
   return (
     <section className="topbar">
@@ -30,7 +50,7 @@ const Topbar = () => {
           <Button
             variant="ghost"
             className="shad-button_ghost"
-            onClick={() => signOut()}>
+            onClick={handleSignOut}>
             <img src="/assets/icons/logout.svg" alt="logout" />
           </Button>
           <Link to={`/profile/${user.id}`} className="flex-center gap-3">

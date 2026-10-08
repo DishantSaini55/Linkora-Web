@@ -16,10 +16,25 @@ import RootLayout from "./_root/RootLayout";
 import SignupForm from "@/_auth/forms/SignupForm";
 import SigninForm from "@/_auth/forms/SigninForm";
 import { Toaster } from "@/components/ui/toaster";
+import { isAppwriteConfigured } from "@/lib/appwrite/config";
 
 import "./globals.css";
 
 const App = () => {
+  if (!isAppwriteConfigured) {
+    return (
+      <section className="flex min-h-screen w-full items-center justify-center bg-dark-1 px-6 text-center text-white">
+        <div className="max-w-xl">
+          <h1 className="h2-bold">Appwrite configuration is missing</h1>
+          <p className="body-regular mt-4 text-light-3">
+            Create a .env.local file from .env.example, add your Appwrite
+            project values, and restart the Vite development server.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <main className="flex h-screen">
       <Routes>

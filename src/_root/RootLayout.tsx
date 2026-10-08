@@ -1,10 +1,22 @@
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 
 import Topbar from "@/components/shared/Topbar";
 import Bottombar from "@/components/shared/Bottombar";
 import LeftSidebar from "@/components/shared/LeftSidebar";
+import Loader from "@/components/shared/Loader";
+import { useUserContext } from "@/context/AuthContext";
 
 const RootLayout = () => {
+  const { isAuthenticated, isLoading } = useUserContext();
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/sign-in" replace />;
+  }
+
   return (
     <div className="w-full md:flex">
       <Topbar />
