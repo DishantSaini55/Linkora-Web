@@ -1,0 +1,8 @@
+{
+  "name": "linkora-create-notification",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

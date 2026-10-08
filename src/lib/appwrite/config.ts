@@ -1,4 +1,4 @@
-import { Client, Account, Databases, Storage, Avatars } from "appwrite";
+import { Client, Account, Databases, Storage, Avatars, Functions } from "appwrite";
 
 export const appwriteConfig = {
   url: import.meta.env.VITE_APPWRITE_URL,
@@ -10,6 +10,8 @@ export const appwriteConfig = {
   savesCollectionId: import.meta.env.VITE_APPWRITE_SAVES_COLLECTION_ID,
   notificationCollectionId:
     import.meta.env.VITE_APPWRITE_NOTIFICATION_COLLECTION_ID,
+  notificationFunctionId:
+    import.meta.env.VITE_APPWRITE_NOTIFICATION_FUNCTION_ID,
 };
 
 export const isAppwriteConfigured = [
@@ -24,7 +26,9 @@ export const isAppwriteConfigured = [
 
 export const isNotificationsConfigured =
   typeof appwriteConfig.notificationCollectionId === "string" &&
-  appwriteConfig.notificationCollectionId.length > 0;
+  appwriteConfig.notificationCollectionId.length > 0 &&
+  typeof appwriteConfig.notificationFunctionId === "string" &&
+  appwriteConfig.notificationFunctionId.length > 0;
 
 export const client = new Client();
 
@@ -35,5 +39,6 @@ if (isAppwriteConfigured) {
 
 export const account = new Account(client);
 export const databases = new Databases(client);
+export const functions = new Functions(client);
 export const storage = new Storage(client);
 export const avatars = new Avatars(client);

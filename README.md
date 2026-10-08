@@ -79,6 +79,14 @@ Populate `.env.local` with the public identifiers from your Appwrite project. Ne
 | `VITE_APPWRITE_USER_COLLECTION_ID` | Users table ID |
 | `VITE_APPWRITE_POST_COLLECTION_ID` | Posts table ID |
 | `VITE_APPWRITE_SAVES_COLLECTION_ID` | Saves table ID |
+| `VITE_APPWRITE_NOTIFICATION_COLLECTION_ID` | Notifications table ID |
+| `VITE_APPWRITE_NOTIFICATION_FUNCTION_ID` | Appwrite Function ID used to create private notifications |
+
+Like/save notifications require the Appwrite Function in
+[`functions/create-notification`](./functions/create-notification). Configure
+its server-only environment variables and execution permissions using that
+function's README. Never put the Function API key in `.env.local` or any
+`VITE_` variable.
 
 ### Run Locally
 

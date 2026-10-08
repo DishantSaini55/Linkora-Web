@@ -1,9 +1,10 @@
-import { ID, Permission, Query, Role, Models } from "appwrite";
+import { ID, Query, Models } from "appwrite";
 
 import {
   appwriteConfig,
   account,
   databases,
+  functions,
   storage,
   avatars,
   isNotificationsConfigured,
@@ -390,19 +391,20 @@ export async function createNotification(notification: {
     type: "like" | "save";
     post: string;
   }) {
-    if (!isNotificationsConfigured) return null;
+    if (
+      !isNotificationsConfigured ||
+      typeof appwriteConfig.notificationFunctionId !== "string"
+    ) {
+      return null;
+    }
 
-    return databases.createDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.notificationCollectionId,
-      ID.unique(),
-      {
-        ...notification,
-        read: false,
-      },
-      [
-        Permission.read(Role.user(notification.recipient)),
-      ]
+    return functions.createExecution(
+      appwriteConfig.notificationFunctionId,
+      JSON.stringify(notification),
+      false,
+      "/",
+      "POST",
+      { "Content-Type": "application/json" }
     );
 }
 
