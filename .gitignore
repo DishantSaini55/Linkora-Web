@@ -10,8 +10,21 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+build
+.next
 .vite
+.cache
+.turbo
+coverage
+.vercel
+.env
+.env.*
+!.env.example
 *.local
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Editor directories and files
 .vscode/*

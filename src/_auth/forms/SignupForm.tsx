@@ -50,8 +50,6 @@ const SignupForm = () => {
         navigate("/");
       } else {
         toast({ title: "Login failed. Please try again.", });
-        
-        return;
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred.";

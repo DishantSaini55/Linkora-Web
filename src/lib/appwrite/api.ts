@@ -156,7 +156,7 @@ export async function createPost(post: INewPost) {
         imageUrl: fileUrl,
         imageid: uploadedFile.$id,
         location: post.location,
-        tags: tags,
+        tags,
       }
     );
 
@@ -308,7 +308,7 @@ export async function updatePost(post: IUpdatePost) {
         imageUrl: image.imageUrl,
         imageid: image.imageId,
         location: post.location,
-        tags: tags,
+        tags,
       }
     );
 
