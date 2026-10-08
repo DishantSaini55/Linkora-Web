@@ -5,9 +5,11 @@ import Bottombar from "@/components/shared/Bottombar";
 import LeftSidebar from "@/components/shared/LeftSidebar";
 import Loader from "@/components/shared/Loader";
 import { useUserContext } from "@/context/AuthContext";
+import { useRealtimePosts } from "@/hooks/useRealtimePosts";
 
 const RootLayout = () => {
   const { isAuthenticated, isLoading } = useUserContext();
+  useRealtimePosts();
 
   if (isLoading) {
     return <Loader />;
