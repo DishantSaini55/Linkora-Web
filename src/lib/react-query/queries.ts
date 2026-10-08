@@ -56,6 +56,37 @@ export const useSignOutAccount = () => {
 // POST QUERIES
 // ============================================================
 
+const invalidatePostQueries = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  postId?: string,
+  userId?: string
+) => {
+  queryClient.invalidateQueries({
+    queryKey: [QUERY_KEYS.GET_INFINITE_POSTS],
+  });
+  queryClient.invalidateQueries({
+    queryKey: [QUERY_KEYS.GET_RECENT_POSTS],
+  });
+  queryClient.invalidateQueries({
+    queryKey: [QUERY_KEYS.SEARCH_POSTS],
+  });
+  queryClient.invalidateQueries({
+    queryKey: [QUERY_KEYS.GET_USER_POSTS],
+  });
+
+  if (postId) {
+    queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.GET_POST_BY_ID, postId],
+    });
+  }
+
+  if (userId) {
+    queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.GET_USER_POSTS, userId],
+    });
+  }
+};
+
 export const useGetPosts = () => {
   return useInfiniteQuery({
     queryKey: [QUERY_KEYS.GET_INFINITE_POSTS],
@@ -90,10 +121,8 @@ export const useCreatePost = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (post: INewPost) => createPost(post),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_RECENT_POSTS],
-      });
+    onSuccess: (_data, variables) => {
+      invalidatePostQueries(queryClient, undefined, variables.userId);
     },
   });
 };
@@ -119,9 +148,7 @@ export const useUpdatePost = () => {
   return useMutation({
     mutationFn: (post: IUpdatePost) => updatePost(post),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_POST_BY_ID, data?.$id],
-      });
+      invalidatePostQueries(queryClient, data?.$id);
     },
   });
 };
@@ -131,10 +158,8 @@ export const useDeletePost = () => {
   return useMutation({
     mutationFn: ({ postId, imageId }: { postId?: string; imageId: string }) =>
       deletePost(postId, imageId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_RECENT_POSTS],
-      });
+    onSuccess: (_data, variables) => {
+      invalidatePostQueries(queryClient, variables.postId);
     },
   });
 };
@@ -150,15 +175,7 @@ export const useLikePost = () => {
       likesArray: string[];
     }) => likePost(postId, likesArray),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_POST_BY_ID, data?.$id],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_RECENT_POSTS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_POSTS],
-      });
+      invalidatePostQueries(queryClient, data?.$id);
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_CURRENT_USER],
       });
@@ -172,12 +189,7 @@ export const useSavePost = () => {
     mutationFn: ({ userId, postId }: { userId: string; postId: string }) =>
       savePost(userId, postId),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_RECENT_POSTS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_POSTS],
-      });
+      invalidatePostQueries(queryClient);
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_CURRENT_USER],
       });
@@ -190,12 +202,7 @@ export const useDeleteSavedPost = () => {
   return useMutation({
     mutationFn: (savedRecordId: string) => deleteSavedPost(savedRecordId),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_RECENT_POSTS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_POSTS],
-      });
+      invalidatePostQueries(queryClient);
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_CURRENT_USER],
       });
