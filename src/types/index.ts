@@ -33,6 +33,7 @@ export type IUpdatePost = {
 
 export type IUser = {
   id: string;
+  accountId: string;
   name: string;
   username: string;
   email: string;

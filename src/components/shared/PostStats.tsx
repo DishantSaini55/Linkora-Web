@@ -11,6 +11,7 @@ import {
   useCreateNotification,
   useGetCurrentUser,
 } from "@/lib/react-query/queries";
+import { useUserContext } from "@/context/AuthContext";
 
 type PostStatsProps = {
   post: Models.Document;
@@ -20,6 +21,8 @@ type PostStatsProps = {
 const PostStats = ({ post, userId }: PostStatsProps) => {
   const location = useLocation();
   const { toast } = useToast();
+  const { user } = useUserContext();
+  const actorAccountId = user.accountId;
   const likesList = post.likes.map((user: Models.Document) => user.$id);
 
   const [likes, setLikes] = useState<string[]>(likesList);
@@ -62,11 +65,11 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
       { postId: post.$id, likesArray },
       {
         onSuccess: () => {
-          if (creatorAccountId && creatorAccountId !== userId) {
+          if (creatorAccountId && actorAccountId && creatorAccountId !== actorAccountId) {
             createNotification(
               {
                 recipient: creatorAccountId,
-                actor: userId,
+                actor: actorAccountId,
                 type: "like",
                 post: post.$id,
               },
@@ -127,11 +130,11 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
       { userId, postId: post.$id },
       {
         onSuccess: () => {
-          if (creatorAccountId && creatorAccountId !== userId) {
+          if (creatorAccountId && actorAccountId && creatorAccountId !== actorAccountId) {
             createNotification(
               {
                 recipient: creatorAccountId,
-                actor: userId,
+                actor: actorAccountId,
                 type: "save",
                 post: post.$id,
               },

@@ -7,7 +7,7 @@ import { useGetNotifications } from "@/lib/react-query/queries";
 const Notifications = () => {
   const { user } = useUserContext();
   const { data: notifications, isLoading, isError, refetch } =
-    useGetNotifications(user.id);
+    useGetNotifications(user.accountId);
 
   if (isLoading) {
     return <Loader />;
