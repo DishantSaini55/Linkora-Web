@@ -401,7 +401,7 @@ export async function createNotification(notification: {
         read: false,
       },
       [
-        Permission.read(Role.user(notification.recipient, "unverified")),
+        Permission.read(Role.user(notification.recipient)),
       ]
     );
 }
