@@ -1,21 +1,28 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 
-import { Button } from "@/components/ui";
+import { Button, Textarea } from "@/components/ui";
 import { GridPostList, Loader, PostStats } from "@/components/shared";
 
 import {
   useGetPostById,
   useGetUserPosts,
   useDeletePost,
+  useGetComments,
+  useCreateComment,
+  useGetUsers,
 } from "@/lib/react-query/queries";
 import { multiFormatDateString } from "@/lib/utils";
 import { useUserContext } from "@/context/AuthContext";
 import { getFilePreview } from "@/lib/appwrite/api";
+import { useToast } from "@/components/ui/use-toast";
 
 const PostDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useUserContext();
+  const { toast } = useToast();
+  const [comment, setComment] = useState("");
 
   const {
     data: post,
@@ -30,6 +37,10 @@ const PostDetails = () => {
     refetch: refetchUserPosts,
   } = useGetUserPosts(post?.creator.$id);
   const { mutate: deletePost } = useDeletePost();
+  const { data: comments, isLoading: isCommentsLoading } = useGetComments(id);
+  const { data: users } = useGetUsers();
+  const { mutate: createComment, isLoading: isCreatingComment } =
+    useCreateComment();
 
   const relatedPosts = userPosts?.documents.filter(
     (userPost) => userPost.$id !== id
@@ -38,6 +49,25 @@ const PostDetails = () => {
   const handleDeletePost = () => {
     deletePost({ postId: id, imageId: post?.imageid });
     navigate(-1);
+  };
+
+  const handleCreateComment = () => {
+    const content = comment.trim();
+    if (!id || !content || isCreatingComment) return;
+
+    createComment(
+      { postId: id, authorId: user.id, content },
+      {
+        onSuccess: () => setComment(""),
+        onError: (error) =>
+          toast({
+            title: "Comment failed",
+            description:
+              error instanceof Error ? error.message : "Please try again.",
+            variant: "destructive",
+          }),
+      }
+    );
   };
 
   return (
@@ -161,6 +191,64 @@ const PostDetails = () => {
       )}
 
       <div className="w-full max-w-5xl">
+        <section className="mt-10 w-full">
+          <h3 className="body-bold md:h3-bold">Comments</h3>
+          <div className="mt-5 flex gap-3">
+            <Textarea
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+              placeholder="Write a comment..."
+              className="shad-textarea min-h-[90px]"
+              maxLength={500}
+              disabled={isCreatingComment}
+            />
+            <Button
+              type="button"
+              className="shad-button_primary self-end"
+              onClick={handleCreateComment}
+              disabled={!comment.trim() || isCreatingComment}>
+              {isCreatingComment ? "Posting..." : "Post"}
+            </Button>
+          </div>
+          {isCommentsLoading ? (
+            <Loader />
+          ) : comments?.length ? (
+            <ul className="mt-6 flex flex-col gap-4">
+              {comments.map((item) => {
+                const author = users?.documents.find(
+                  (candidate) => candidate.$id === item.author
+                );
+
+                return (
+                  <li key={item.$id} className="rounded-lg bg-dark-4 p-4">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={
+                          author?.imageUrl ||
+                          "/assets/icons/profile-placeholder.svg"
+                        }
+                        alt={author?.name || "Comment author"}
+                        className="h-9 w-9 rounded-full object-cover"
+                      />
+                      <div>
+                        <p className="small-semibold">
+                          {author?.name || "User"}
+                        </p>
+                        <p className="subtle-regular text-light-3">
+                          {multiFormatDateString(item.$createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="body-regular mt-3">{item.content}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-light-4 mt-5">No comments yet.</p>
+          )}
+        </section>
+
         <hr className="border w-full border-dark-4/80" />
 
         <h3 className="body-bold md:h3-bold w-full my-10">

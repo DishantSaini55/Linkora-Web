@@ -33,6 +33,8 @@ import {
   getFollowCounts,
   createFollow,
   deleteFollow,
+  getComments,
+  createComment,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -319,6 +321,34 @@ export const useDeleteFollow = () => {
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_FOLLOW_COUNTS, variables.follower],
+      });
+    },
+  });
+};
+
+export const useGetComments = (postId?: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_COMMENTS, postId],
+    queryFn: () => getComments(postId || ""),
+    enabled: !!postId,
+  });
+
+export const useCreateComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      postId,
+      authorId,
+      content,
+    }: {
+      postId: string;
+      authorId: string;
+      content: string;
+    }) => createComment(postId, authorId, content),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_COMMENTS, variables.postId],
       });
     },
   });

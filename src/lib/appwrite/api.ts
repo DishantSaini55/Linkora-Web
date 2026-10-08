@@ -9,6 +9,7 @@ import {
   avatars,
   isNotificationsConfigured,
   isFollowsConfigured,
+  isCommentsConfigured,
 } from "./config";
 import { IUpdatePost, INewPost, INewUser, IUpdateUser } from "@/types";
 
@@ -516,6 +517,42 @@ export async function deleteFollow(followId: string) {
     appwriteConfig.databaseId,
     appwriteConfig.followsCollectionId,
     followId
+  );
+}
+
+export async function getComments(
+  postId: string
+): Promise<Models.Document[]> {
+  if (!isCommentsConfigured) return [];
+
+  const comments = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.commentsCollectionId,
+    [
+      Query.equal("post", postId),
+      Query.orderDesc("$createdAt"),
+      Query.limit(100),
+    ]
+  );
+
+  return comments.documents;
+}
+
+export async function createComment(
+  postId: string,
+  authorId: string,
+  content: string
+) {
+  if (!isCommentsConfigured) {
+    throw new Error("Comments collection is not configured.");
+  }
+
+  return databases.createDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.commentsCollectionId,
+    ID.unique(),
+    { post: postId, author: authorId, content },
+    [Permission.read(Role.any())]
   );
 }
 
