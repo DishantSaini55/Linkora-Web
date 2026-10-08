@@ -2,12 +2,13 @@ import { Link } from "react-router-dom";
 
 import { Loader } from "@/components/shared";
 import { useUserContext } from "@/context/AuthContext";
-import { useGetNotifications } from "@/lib/react-query/queries";
+import { useGetNotifications, useGetUsers } from "@/lib/react-query/queries";
 
 const Notifications = () => {
   const { user } = useUserContext();
   const { data: notifications, isLoading, isError, refetch } =
     useGetNotifications(user.accountId);
+  const { data: users } = useGetUsers();
 
   if (isLoading) {
     return <Loader />;
@@ -35,19 +36,48 @@ const Notifications = () => {
       ) : (
         <ul className="flex w-full max-w-5xl flex-col gap-4 mt-8">
           {notifications.map((notification) => (
-            <li
-              key={notification.$id}
-              className="flex items-center gap-3 rounded-lg bg-dark-4 p-4">
-              <p className="body-medium">
-                Someone {notification.type === "like" ? "liked" : "saved"} your
-                post.
-              </p>
-              <Link
-                to={`/posts/${notification.post}`}
-                className="text-primary-500 small-semibold">
-                View post
-              </Link>
-            </li>
+            (() => {
+              const actor = users?.documents.find(
+                (candidate) => candidate.accountId === notification.actor
+              );
+
+              return (
+                <li
+                  key={notification.$id}
+                  className="flex items-center gap-3 rounded-lg bg-dark-4 p-4">
+                  {actor ? (
+                    <Link to={`/profile/${actor.$id}`}>
+                      <img
+                        src={
+                          actor.imageUrl ||
+                          "/assets/icons/profile-placeholder.svg"
+                        }
+                        alt={actor.name}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    </Link>
+                  ) : null}
+                  <p className="body-medium">
+                    {actor ? (
+                      <Link
+                        to={`/profile/${actor.$id}`}
+                        className="font-semibold text-light-1">
+                        {actor.name}
+                      </Link>
+                    ) : (
+                      "Someone"
+                    )}{" "}
+                    {notification.type === "like" ? "liked" : "saved"} your
+                    post.
+                  </p>
+                  <Link
+                    to={`/posts/${notification.post}`}
+                    className="ml-auto text-primary-500 small-semibold">
+                    View post
+                  </Link>
+                </li>
+              );
+            })()
           ))}
         </ul>
       )}
