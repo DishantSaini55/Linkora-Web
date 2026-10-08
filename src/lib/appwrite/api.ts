@@ -179,33 +179,20 @@ export async function uploadFile(file: File) {
 
 // ============================== GET FILE URL
 export function getFilePreview(fileId: string) {
-  try {
-    const fileUrl = storage.getFilePreview(
-      appwriteConfig.storageId,
-      fileId,
-      2000,
-      2000,
-      "top",
-      100
-    );
-
-    if (!fileUrl) throw Error;
-
-    return fileUrl;
-  } catch (error) {
-    console.log(error);
-  }
+  return storage.getFilePreview(
+    appwriteConfig.storageId,
+    fileId,
+    2000,
+    2000,
+    "top",
+    100
+  );
 }
 
 // ============================== DELETE FILE
 export async function deleteFile(fileId: string) {
-  try {
-    await storage.deleteFile(appwriteConfig.storageId, fileId);
-
-    return { status: "ok" };
-  } catch (error) {
-    console.log(error);
-  }
+  await storage.deleteFile(appwriteConfig.storageId, fileId);
+  return { status: "ok" };
 }
 
 // ============================== GET POSTS
@@ -237,21 +224,13 @@ export async function getInfinitePosts({
 
 // ============================== GET POST BY ID
 export async function getPostById(postId?: string) {
-  if (!postId) throw Error;
+  if (!postId) throw new Error("A post ID is required.");
 
-  try {
-    const post = await databases.getDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.postCollectionId,
-      postId
-    );
-
-    if (!post) throw Error;
-
-    return post;
-  } catch (error) {
-    console.log(error);
-  }
+  return databases.getDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.postCollectionId,
+    postId
+  );
 }
 
 // ============================== UPDATE POST
@@ -320,7 +299,9 @@ export async function updatePost(post: IUpdatePost) {
 
 // ============================== DELETE POST
 export async function deletePost(postId?: string, imageId?: string) {
-  if (!postId || !imageId) return;
+  if (!postId || !imageId) {
+    throw new Error("A post ID and image ID are required.");
+  }
 
   try {
     const statusCode = await databases.deleteDocument(
@@ -398,21 +379,13 @@ export async function deleteSavedPost(savedRecordId: string) {
 
 // ============================== GET USER'S POST
 export async function getUserPosts(userId?: string) {
-  if (!userId) return;
+  if (!userId) throw new Error("A user ID is required.");
 
-  try {
-    const post = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.postCollectionId,
-      [Query.equal("creator", userId), Query.orderDesc("$createdAt")]
-    );
-
-    if (!post) throw Error;
-
-    return post;
-  } catch (error) {
-    console.log(error);
-  }
+  return databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.postCollectionId,
+    [Query.equal("creator", userId), Query.orderDesc("$createdAt")]
+  );
 }
 
 // ============================== GET POPULAR POSTS (BY HIGHEST LIKE COUNT)
@@ -445,19 +418,11 @@ export async function getUsers(limit?: number) {
 
 // ============================== GET USER BY ID
 export async function getUserById(userId: string) {
-  try {
-    const user = await databases.getDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId,
-      userId
-    );
-
-    if (!user) throw Error;
-
-    return user;
-  } catch (error) {
-    console.log(error);
-  }
+  return databases.getDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.userCollectionId,
+    userId
+  );
 }
 
 // ============================== UPDATE USER
