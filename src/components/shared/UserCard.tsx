@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useUserContext } from "@/context/AuthContext";
 import {
   useCreateFollow,
+  useCreateNotification,
   useDeleteFollow,
   useGetFollowRelationship,
 } from "@/lib/react-query/queries";
@@ -22,6 +23,7 @@ const UserCard = ({ user }: UserCardProps) => {
     user.$id
   );
   const { mutate: createFollow, isLoading: isCreating } = useCreateFollow();
+  const { mutate: createNotification } = useCreateNotification();
   const { mutate: deleteFollow, isLoading: isDeleting } = useDeleteFollow();
   const isFollowing = !!follow;
   const isBusy = isCreating || isDeleting;
@@ -36,6 +38,13 @@ const UserCard = ({ user }: UserCardProps) => {
       deleteFollow(
         { followId: follow.$id, follower: currentUser.id, following: user.$id },
         {
+          onSuccess: () =>
+            createNotification({
+              recipient: user.accountId,
+              actor: currentUser.accountId,
+              type: "follow",
+              post: "",
+            }),
           onError: (error) =>
             toast({
               title: "Unfollow failed",

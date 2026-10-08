@@ -16,6 +16,7 @@ import {
   useGetFollowCounts,
   useGetFollowRelationship,
   useGetUserById,
+  useCreateNotification,
 } from "@/lib/react-query/queries";
 import { GridPostList, Loader } from "@/components/shared";
 
@@ -45,6 +46,7 @@ const Profile = () => {
   const { data: follow } = useGetFollowRelationship(user.id, id);
   const { data: followCounts } = useGetFollowCounts(id);
   const { mutate: createFollow, isLoading: isCreating } = useCreateFollow();
+  const { mutate: createNotification } = useCreateNotification();
   const { mutate: deleteFollow, isLoading: isDeleting } = useDeleteFollow();
 
   if (isLoading)
@@ -137,6 +139,14 @@ const Profile = () => {
                       follower: user.id,
                       following: currentUser.$id,
                       followerAccountId: user.accountId,
+                    }, {
+                      onSuccess: () =>
+                        createNotification({
+                          recipient: currentUser.accountId,
+                          actor: user.accountId,
+                          type: "follow",
+                          post: "",
+                        }),
                     });
                   }
                 }}>

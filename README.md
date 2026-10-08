@@ -14,6 +14,11 @@ Linkora gives users a single place to create visual posts, browse recent content
 - Image validation for PNG, JPEG, and WebP uploads up to 10 MB
 - Home feed and creator discovery
 - Post likes and saved posts
+- Follow relationships and follow notifications
+- Commenting with comment notifications
+- Unread notification badges
+- Private post and comment reports
+- Search and recent-post filtering
 - User profiles and profile editing
 - Responsive navigation with desktop and mobile layouts
 
@@ -81,6 +86,9 @@ Populate `.env.local` with the public identifiers from your Appwrite project. Ne
 | `VITE_APPWRITE_SAVES_COLLECTION_ID` | Saves table ID |
 | `VITE_APPWRITE_NOTIFICATION_COLLECTION_ID` | Notifications table ID |
 | `VITE_APPWRITE_NOTIFICATION_FUNCTION_ID` | Appwrite Function ID used to create private notifications |
+| `VITE_APPWRITE_FOLLOWS_COLLECTION_ID` | Follows table ID |
+| `VITE_APPWRITE_COMMENTS_COLLECTION_ID` | Comments table ID |
+| `VITE_APPWRITE_REPORTS_COLLECTION_ID` | Private Reports table ID |
 
 Like/save notifications require the Appwrite Function in
 [`functions/create-notification`](./functions/create-notification). Configure
@@ -121,11 +129,20 @@ Create these Appwrite resources and place their IDs in `.env.local`:
 - **Users** table: application profile data linked to an Appwrite Account
 - **Posts** table: creator relationship, caption, image URL, image-file ID, location, tags, likes, and saves
 - **Saves** table: user-to-post saved-record relationship
+- **Follows** table: `follower` and `following` profile IDs, with key indexes on both fields
+- **Comments** table: `post`, `author`, and `content` fields, with a key index on `post`
+- **Reports** table: `reporter`, `targetType`, `targetId`, and `reason`; enable authenticated Create and keep reads private
 - **Media** bucket: uploaded post and profile images
 
 The existing Posts table uses `imageid` (lowercase `i`) for the image-file ID column. Keep that key if you use the supplied Appwrite schema.
 
 Authenticated users need the relevant permissions on the tables and media bucket. At a minimum, grant the operations used by the client: create/read for profile records; create/read/update/delete for posts and saves; and create/read/update/delete for media files. Without storage create permission, image-post creation will fail before a post row is created.
+
+For the Follows and Comments tables, enable authenticated Create and public Read;
+document permissions restrict follow deletion and comment editing/deletion to the
+relevant user. For Reports, enable authenticated Create only and configure
+document-level read permissions for the reporter. The notification type field
+must accept `like`, `save`, `follow`, and `comment`.
 
 ## Authentication
 

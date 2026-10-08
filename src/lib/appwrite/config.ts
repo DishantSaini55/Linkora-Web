@@ -10,6 +10,7 @@ export const appwriteConfig = {
   savesCollectionId: import.meta.env.VITE_APPWRITE_SAVES_COLLECTION_ID,
   followsCollectionId: import.meta.env.VITE_APPWRITE_FOLLOWS_COLLECTION_ID,
   commentsCollectionId: import.meta.env.VITE_APPWRITE_COMMENTS_COLLECTION_ID,
+  reportsCollectionId: import.meta.env.VITE_APPWRITE_REPORTS_COLLECTION_ID,
   notificationCollectionId:
     import.meta.env.VITE_APPWRITE_NOTIFICATION_COLLECTION_ID,
   notificationFunctionId:
@@ -39,6 +40,10 @@ export const isFollowsConfigured =
 export const isCommentsConfigured =
   typeof appwriteConfig.commentsCollectionId === "string" &&
   appwriteConfig.commentsCollectionId.length > 0;
+
+export const isReportsConfigured =
+  typeof appwriteConfig.reportsCollectionId === "string" &&
+  appwriteConfig.reportsCollectionId.length > 0;
 
 export const client = new Client();
 

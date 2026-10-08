@@ -79,14 +79,22 @@ const Notifications = () => {
                     ) : (
                       "Someone"
                     )}{" "}
-                    {notification.type === "like" ? "liked" : "saved"} your
-                    post.
+                    {notification.type === "like"
+                      ? "liked"
+                      : notification.type === "save"
+                        ? "saved"
+                        : notification.type === "follow"
+                          ? "started following you."
+                          : "commented on"}{" "}
+                    {notification.type === "follow" ? "" : "your post."}
                   </p>
-                  <Link
-                    to={`/posts/${notification.post}`}
-                    className="ml-auto text-primary-500 small-semibold">
-                    View post
-                  </Link>
+                  {notification.post ? (
+                    <Link
+                      to={`/posts/${notification.post}`}
+                      className="ml-auto text-primary-500 small-semibold">
+                      View post
+                    </Link>
+                  ) : null}
                 </li>
               );
             })()

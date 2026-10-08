@@ -1,4 +1,4 @@
-const allowedTypes = new Set(["like", "save"]);
+const allowedTypes = new Set(["like", "save", "follow", "comment"]);
 
 export default async ({ req, res, error }) => {
   try {

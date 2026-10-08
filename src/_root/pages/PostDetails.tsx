@@ -13,6 +13,8 @@ import {
   useUpdateComment,
   useDeleteComment,
   useGetUsers,
+  useCreateNotification,
+  useCreateReport,
 } from "@/lib/react-query/queries";
 import { multiFormatDateString } from "@/lib/utils";
 import { useUserContext } from "@/context/AuthContext";
@@ -27,6 +29,9 @@ const PostDetails = () => {
   const [comment, setComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const { mutate: createNotification } = useCreateNotification();
+  const { mutate: createReport, isLoading: isCreatingReport } =
+    useCreateReport();
 
   const {
     data: post,
@@ -71,10 +76,49 @@ const PostDetails = () => {
         content,
       },
       {
-        onSuccess: () => setComment(""),
+        onSuccess: () => {
+          setComment("");
+          if (post?.creator.accountId && post.creator.accountId !== user.accountId) {
+            createNotification({
+              recipient: post.creator.accountId,
+              actor: user.accountId,
+              type: "comment",
+              post: id,
+            });
+          }
+        },
         onError: (error) =>
           toast({
             title: "Comment failed",
+            description:
+              error instanceof Error ? error.message : "Please try again.",
+            variant: "destructive",
+          }),
+      }
+    );
+  };
+
+  const handleReport = (targetType: "post" | "comment", targetId: string) => {
+    if (isCreatingReport) return;
+
+    const reason = window
+      .prompt(
+        `Why are you reporting this ${targetType === "post" ? "post" : "comment"}?`
+      )
+      ?.trim();
+    if (!reason) return;
+
+    createReport(
+      { reporter: user.accountId, targetType, targetId, reason },
+      {
+        onSuccess: () =>
+          toast({
+            title: "Report submitted",
+            description: "Thank you. We will review this report.",
+          }),
+        onError: (error) =>
+          toast({
+            title: "Report failed",
             description:
               error instanceof Error ? error.message : "Please try again.",
             variant: "destructive",
@@ -119,6 +163,13 @@ const PostDetails = () => {
             height={24}
           />
           <p className="small-medium lg:base-medium">Back</p>
+        </Button>
+        <Button
+          onClick={() => post && handleReport("post", post.$id)}
+          variant="ghost"
+          disabled={isCreatingReport}
+          className="text-light-3">
+          Report
         </Button>
       </div>
 
@@ -208,13 +259,15 @@ const PostDetails = () => {
             <div className="flex flex-col flex-1 w-full small-medium lg:base-regular">
               <p>{post?.caption}</p>
               <ul className="flex gap-1 mt-2">
-                {post?.tags.map((tag: string, index: string) => (
+                {(Array.isArray(post?.tags) ? post.tags : []).map(
+                  (tag: string, index: number) => (
                   <li
                     key={`${tag}${index}`}
                     className="text-light-3 small-regular">
                     #{tag}
                   </li>
-                ))}
+                  )
+                )}
               </ul>
             </div>
 
@@ -329,6 +382,13 @@ const PostDetails = () => {
                         </button>
                       </div>
                     ) : null}
+                    <button
+                      type="button"
+                      className="small-semibold text-light-3 mt-3"
+                      disabled={isCreatingReport}
+                      onClick={() => handleReport("comment", item.$id)}>
+                      Report
+                    </button>
                   </li>
                 );
               })}

@@ -10,6 +10,7 @@ import {
   isNotificationsConfigured,
   isFollowsConfigured,
   isCommentsConfigured,
+  isReportsConfigured,
 } from "./config";
 import { IUpdatePost, INewPost, INewUser, IUpdateUser } from "@/types";
 
@@ -390,7 +391,7 @@ export async function deleteSavedPost(savedRecordId: string) {
 export async function createNotification(notification: {
     recipient: string;
     actor: string;
-    type: "like" | "save";
+    type: "like" | "save" | "follow" | "comment";
     post: string;
   }) {
     if (
@@ -426,6 +427,16 @@ export async function getNotifications(
     );
 
     return notifications.documents;
+}
+
+export async function getUnreadNotificationCount(recipient: string) {
+  if (!isNotificationsConfigured) return 0;
+  const notifications = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.notificationCollectionId,
+    [Query.equal("recipient", recipient), Query.equal("read", false), Query.limit(1)]
+  );
+  return notifications.total;
 }
 
 export async function markNotificationsRead(recipient: string) {
@@ -558,6 +569,25 @@ export async function createComment(
       Permission.update(Role.user(authorAccountId)),
       Permission.delete(Role.user(authorAccountId)),
     ]
+  );
+}
+
+export async function createReport(
+  reporter: string,
+  targetType: "post" | "comment",
+  targetId: string,
+  reason: string
+) {
+  if (!isReportsConfigured) {
+    throw new Error("Reports collection is not configured.");
+  }
+
+  return databases.createDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.reportsCollectionId,
+    ID.unique(),
+    { reporter, targetType, targetId, reason },
+    [Permission.read(Role.user(reporter))]
   );
 }
 

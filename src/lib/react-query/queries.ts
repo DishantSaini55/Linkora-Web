@@ -35,6 +35,8 @@ import {
   deleteFollow,
   getComments,
   createComment,
+  getUnreadNotificationCount,
+  createReport,
   updateComment,
   deleteComment,
 } from "@/lib/appwrite/api";
@@ -226,7 +228,7 @@ export const useCreateNotification = () => {
     mutationFn: (notification: {
       recipient: string;
       actor: string;
-      type: "like" | "save";
+      type: "like" | "save" | "follow" | "comment";
       post: string;
     }) => createNotification(notification),
   });
@@ -240,6 +242,29 @@ export const useGetNotifications = (recipient?: string) => {
   });
 };
 
+export const useGetUnreadNotificationCount = (recipient?: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_UNREAD_NOTIFICATIONS, recipient],
+    queryFn: () => getUnreadNotificationCount(recipient || ""),
+    enabled: !!recipient,
+    refetchInterval: 30000,
+  });
+
+export const useCreateReport = () =>
+  useMutation({
+    mutationFn: ({
+      reporter,
+      targetType,
+      targetId,
+      reason,
+    }: {
+      reporter: string;
+      targetType: "post" | "comment";
+      targetId: string;
+      reason: string;
+    }) => createReport(reporter, targetType, targetId, reason),
+  });
+
 export const useMarkNotificationsRead = () => {
   const queryClient = useQueryClient();
 
@@ -248,6 +273,9 @@ export const useMarkNotificationsRead = () => {
     onSuccess: (_, recipient) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_NOTIFICATIONS, recipient],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_UNREAD_NOTIFICATIONS, recipient],
       });
     },
   });
