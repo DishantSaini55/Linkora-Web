@@ -1,6 +1,13 @@
-import { ID, Query } from "appwrite";
+import { ID, Query, Models } from "appwrite";
 
-import { appwriteConfig, account, databases, storage, avatars } from "./config";
+import {
+  appwriteConfig,
+  account,
+  databases,
+  storage,
+  avatars,
+  isNotificationsConfigured,
+} from "./config";
 import { IUpdatePost, INewPost, INewUser, IUpdateUser } from "@/types";
 
 // ============================================================
@@ -375,6 +382,43 @@ export async function deleteSavedPost(savedRecordId: string) {
   } catch (error) {
     console.log(error);
   }
+}
+
+export async function createNotification(notification: {
+    recipient: string;
+    actor: string;
+    type: "like" | "save";
+    post: string;
+  }) {
+    if (!isNotificationsConfigured) return null;
+
+    return databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.notificationCollectionId,
+      ID.unique(),
+      {
+        ...notification,
+        read: false,
+      }
+    );
+}
+
+export async function getNotifications(
+  recipient: string
+): Promise<Models.Document[]> {
+    if (!isNotificationsConfigured) return [];
+
+    const notifications = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.notificationCollectionId,
+      [
+        Query.equal("recipient", recipient),
+        Query.orderDesc("$createdAt"),
+        Query.limit(50),
+      ]
+    );
+
+    return notifications.documents;
 }
 
 // ============================== GET USER'S POST

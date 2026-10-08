@@ -3,7 +3,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Models } from "appwrite";
 
 import { useUserContext } from "@/context/AuthContext";
-import { client, appwriteConfig, isAppwriteConfigured } from "@/lib/appwrite/config";
+import {
+  client,
+  appwriteConfig,
+  isAppwriteConfigured,
+  isNotificationsConfigured,
+} from "@/lib/appwrite/config";
 import { QUERY_KEYS } from "@/lib/react-query/queryKeys";
 
 export const useRealtimePosts = () => {
@@ -16,7 +21,7 @@ export const useRealtimePosts = () => {
     const channel = `collections.${appwriteConfig.postCollectionId}.documents`;
 
     try {
-      const unsubscribe = client.subscribe<Models.Document>(
+      const unsubscribePosts = client.subscribe<Models.Document>(
         channel,
         () => {
           queryClient.invalidateQueries({
@@ -37,7 +42,21 @@ export const useRealtimePosts = () => {
         }
       );
 
-      return unsubscribe;
+      const unsubscribeNotifications = isNotificationsConfigured
+        ? client.subscribe<Models.Document>(
+            `collections.${appwriteConfig.notificationCollectionId}.documents`,
+            () => {
+              queryClient.invalidateQueries({
+                queryKey: [QUERY_KEYS.GET_NOTIFICATIONS],
+              });
+            }
+          )
+        : undefined;
+
+      return () => {
+        unsubscribePosts();
+        unsubscribeNotifications?.();
+      };
     } catch (error) {
       console.error("Unable to subscribe to realtime post updates.", error);
     }

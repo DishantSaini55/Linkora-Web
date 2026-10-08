@@ -8,6 +8,7 @@ import {
   useLikePost,
   useSavePost,
   useDeleteSavedPost,
+  useCreateNotification,
   useGetCurrentUser,
 } from "@/lib/react-query/queries";
 
@@ -28,6 +29,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
   const { mutate: savePost, isLoading: isSaving } = useSavePost();
   const { mutate: deleteSavePost, isLoading: isDeletingSave } =
     useDeleteSavedPost();
+  const { mutate: createNotification } = useCreateNotification();
 
   const { data: currentUser } = useGetCurrentUser();
 
@@ -58,6 +60,30 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
     likePost(
       { postId: post.$id, likesArray },
       {
+        onSuccess: () => {
+          if (post.creator.$id !== userId) {
+            createNotification(
+              {
+                recipient: post.creator.$id,
+                actor: userId,
+                type: "like",
+                post: post.$id,
+              },
+              {
+                onError: (error) => {
+                  toast({
+                    title: "Like notification failed",
+                    description:
+                      error instanceof Error
+                        ? error.message
+                        : "Please try again.",
+                    variant: "destructive",
+                  });
+                },
+              }
+            );
+          }
+        },
         onError: (error) => {
           setLikes(previousLikes);
           toast({
@@ -99,6 +125,30 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
     savePost(
       { userId, postId: post.$id },
       {
+        onSuccess: () => {
+          if (post.creator.$id !== userId) {
+            createNotification(
+              {
+                recipient: post.creator.$id,
+                actor: userId,
+                type: "save",
+                post: post.$id,
+              },
+              {
+                onError: (error) => {
+                  toast({
+                    title: "Save notification failed",
+                    description:
+                      error instanceof Error
+                        ? error.message
+                        : "Please try again.",
+                    variant: "destructive",
+                  });
+                },
+              }
+            );
+          }
+        },
         onError: (error) => {
           setIsSaved(false);
           toast({

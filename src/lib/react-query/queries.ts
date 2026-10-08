@@ -26,6 +26,8 @@ import {
   searchPosts,
   savePost,
   deleteSavedPost,
+  createNotification,
+  getNotifications,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -207,6 +209,25 @@ export const useDeleteSavedPost = () => {
         queryKey: [QUERY_KEYS.GET_CURRENT_USER],
       });
     },
+  });
+};
+
+export const useCreateNotification = () => {
+  return useMutation({
+    mutationFn: (notification: {
+      recipient: string;
+      actor: string;
+      type: "like" | "save";
+      post: string;
+    }) => createNotification(notification),
+  });
+};
+
+export const useGetNotifications = (recipient?: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_NOTIFICATIONS, recipient],
+    queryFn: () => getNotifications(recipient || ""),
+    enabled: !!recipient,
   });
 };
 
