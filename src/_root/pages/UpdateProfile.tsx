@@ -36,41 +36,68 @@ const UpdateProfile = () => {
   });
 
   // Queries
-  const { data: currentUser } = useGetUserById(id || "");
+  const {
+    data: currentUser,
+    isLoading: isLoadingUser,
+    isError: isUserError,
+    refetch: refetchUser,
+  } = useGetUserById(id || "");
   const { mutateAsync: updateUser, isLoading: isLoadingUpdate } =
     useUpdateUser();
 
-  if (!currentUser)
+  if (isLoadingUser)
     return (
       <div className="flex-center w-full h-full">
         <Loader />
       </div>
     );
 
+  if (isUserError || !currentUser) {
+    return (
+      <div className="flex-center h-full w-full flex-col">
+        <p className="text-light-4">We couldn&apos;t load your profile.</p>
+        <button
+          type="button"
+          className="text-primary-500 small-semibold mt-3"
+          onClick={() => refetchUser()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   // Handler
   const handleUpdate = async (value: z.infer<typeof ProfileValidation>) => {
-    const updatedUser = await updateUser({
-      userId: currentUser.$id,
-      name: value.name,
-      bio: value.bio,
-      file: value.file,
-      imageUrl: currentUser.imageUrl,
-      imageId: currentUser.imageId,
-    });
+    try {
+      const updatedUser = await updateUser({
+        userId: currentUser.$id,
+        name: value.name,
+        bio: value.bio,
+        file: value.file,
+        imageUrl: currentUser.imageUrl,
+        imageId: currentUser.imageId,
+      });
+      if (!updatedUser) {
+        throw new Error("Appwrite did not update the profile.");
+      }
 
-    if (!updatedUser) {
+      setUser({
+        ...user,
+        name: updatedUser.name,
+        bio: updatedUser.bio,
+        imageUrl: updatedUser.imageUrl,
+      });
+      navigate(`/profile/${id}`);
+    } catch (error) {
       toast({
-        title: `Update user failed. Please try again.`,
+        title: "Update profile failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred.",
+        variant: "destructive",
       });
     }
-
-    setUser({
-      ...user,
-      name: updatedUser?.name,
-      bio: updatedUser?.bio,
-      imageUrl: updatedUser?.imageUrl,
-    });
-    return navigate(`/profile/${id}`);
   };
 
   return (

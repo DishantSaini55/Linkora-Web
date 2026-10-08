@@ -50,18 +50,25 @@ const PostForm = ({ post, action }: PostFormProps) => {
   const handleSubmit = async (value: z.infer<typeof PostValidation>) => {
     // ACTION = UPDATE
     if (post && action === "Update") {
-      const updatedPost = await updatePost({
-        ...value,
-        postId: post.$id,
-        imageId: post.imageid,
-        imageUrl: post.imageUrl,
-      });
-
-      if (!updatedPost) {
-        toast({
-          title: `${action} post failed. Please try again.`,
+      try {
+        await updatePost({
+          ...value,
+          postId: post.$id,
+          imageId: post.imageid,
+          imageUrl: post.imageUrl,
         });
+      } catch (error) {
+        toast({
+          title: "Update post failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred.",
+          variant: "destructive",
+        });
+        return;
       }
+
       return navigate(`/posts/${post.$id}`);
     }
 

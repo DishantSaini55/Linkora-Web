@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 import { checkIsLiked } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 import {
   useLikePost,
   useSavePost,
@@ -17,14 +18,16 @@ type PostStatsProps = {
 
 const PostStats = ({ post, userId }: PostStatsProps) => {
   const location = useLocation();
+  const { toast } = useToast();
   const likesList = post.likes.map((user: Models.Document) => user.$id);
 
   const [likes, setLikes] = useState<string[]>(likesList);
   const [isSaved, setIsSaved] = useState(false);
 
-  const { mutate: likePost } = useLikePost();
-  const { mutate: savePost } = useSavePost();
-  const { mutate: deleteSavePost } = useDeleteSavedPost();
+  const { mutate: likePost, isLoading: isLiking } = useLikePost();
+  const { mutate: savePost, isLoading: isSaving } = useSavePost();
+  const { mutate: deleteSavePost, isLoading: isDeletingSave } =
+    useDeleteSavedPost();
 
   const { data: currentUser } = useGetCurrentUser();
 
@@ -40,6 +43,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
     e: React.MouseEvent<HTMLImageElement, MouseEvent>
   ) => {
     e.stopPropagation();
+    if (isLiking) return;
 
     let likesArray = [...likes];
 
@@ -49,21 +53,65 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
       likesArray.push(userId);
     }
 
+    const previousLikes = likes;
     setLikes(likesArray);
-    likePost({ postId: post.$id, likesArray });
+    likePost(
+      { postId: post.$id, likesArray },
+      {
+        onError: (error) => {
+          setLikes(previousLikes);
+          toast({
+            title: "Like update failed",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Please try again.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
   };
 
   const handleSavePost = (
     e: React.MouseEvent<HTMLImageElement, MouseEvent>
   ) => {
     e.stopPropagation();
+    if (isSaving || isDeletingSave) return;
 
     if (savedPostRecord) {
       setIsSaved(false);
-      return deleteSavePost(savedPostRecord.$id);
+      return deleteSavePost(savedPostRecord.$id, {
+        onError: (error) => {
+          setIsSaved(true);
+          toast({
+            title: "Remove saved post failed",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Please try again.",
+            variant: "destructive",
+          });
+        },
+      });
     }
 
-    savePost({ userId, postId: post.$id });
+    savePost(
+      { userId, postId: post.$id },
+      {
+        onError: (error) => {
+          setIsSaved(false);
+          toast({
+            title: "Save post failed",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Please try again.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
     setIsSaved(true);
   };
 
@@ -85,7 +133,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
           width={20}
           height={20}
           onClick={(e) => handleLikePost(e)}
-          className="cursor-pointer"
+          className={`cursor-pointer ${isLiking ? "opacity-50" : ""}`}
         />
         <p className="small-medium lg:base-medium">{likes.length}</p>
       </div>
@@ -97,6 +145,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
           width={20}
           height={20}
           className="cursor-pointer"
+          aria-disabled={isSaving || isDeletingSave}
           onClick={(e) => handleSavePost(e)}
         />
       </div>
