@@ -1,4 +1,4 @@
-import { ID, Query, Models } from "appwrite";
+import { ID, Permission, Query, Role, Models } from "appwrite";
 
 import {
   appwriteConfig,
@@ -399,7 +399,8 @@ export async function createNotification(notification: {
       {
         ...notification,
         read: false,
-      }
+      },
+      [Permission.read(Role.user(notification.recipient))]
     );
 }
 
