@@ -9,7 +9,10 @@ export default async ({ req, res, error }) => {
       return res.json({ message: "Authentication is required." }, 401);
     }
 
-    const body = req.body ? JSON.parse(req.body) : {};
+    const body =
+      typeof req.body === "string"
+        ? JSON.parse(req.body)
+        : req.body || {};
     const { recipient, actor: requestedActor, type, post } = body;
 
     if (
