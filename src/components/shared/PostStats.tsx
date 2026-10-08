@@ -23,7 +23,9 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
   const { toast } = useToast();
   const { user } = useUserContext();
   const actorAccountId = user.accountId;
-  const likesList = post.likes.map((user: Models.Document) => user.$id);
+  const likesList = Array.isArray(post.likes)
+    ? post.likes.map((user: Models.Document) => user.$id)
+    : [];
 
   const [likes, setLikes] = useState<string[]>(likesList);
   const [isSaved, setIsSaved] = useState(false);
