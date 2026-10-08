@@ -53,7 +53,15 @@ const Home = () => {
     <div className="flex flex-1">
       <div className="home-container">
         <div className="home-posts">
-          <h2 className="h3-bold md:h2-bold text-left w-full">Home Feed</h2>
+          <div className="w-full">
+            <p className="eyebrow">YOUR DAILY CREATIVE FEED</p>
+            <h2 className="h3-bold md:h2-bold text-left w-full mt-2">
+              Discover something new
+            </h2>
+            <p className="small-regular text-light-3 mt-2">
+              Fresh ideas and creators, all in one place.
+            </p>
+          </div>
           {isPostLoading && !posts ? (
             <Loader />
           ) : posts?.documents.length === 0 ? (

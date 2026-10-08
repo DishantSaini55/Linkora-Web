@@ -20,7 +20,7 @@ const RootLayout = () => {
   }
 
   return (
-    <div className="w-full md:flex">
+    <div className="app-shell w-full md:flex">
       <Topbar />
       <LeftSidebar />
 

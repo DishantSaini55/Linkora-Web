@@ -108,7 +108,13 @@ const Explore = () => {
   return (
     <div className="explore-container">
       <div className="explore-inner_container">
-        <h2 className="h3-bold md:h2-bold w-full">Search Posts</h2>
+        <div className="w-full">
+          <p className="eyebrow">EXPLORE THE COMMUNITY</p>
+          <h2 className="h3-bold md:h2-bold w-full mt-2">Find your next idea</h2>
+          <p className="small-regular text-light-3 mt-2">
+            Search posts, discover creators, and save what inspires you.
+          </p>
+        </div>
         <div className="flex gap-1 px-4 w-full rounded-lg bg-dark-4">
           <img
             src="/assets/icons/search.svg"

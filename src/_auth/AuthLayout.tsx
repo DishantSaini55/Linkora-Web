@@ -11,22 +11,22 @@ export default function AuthLayout() {
   }
 
   return (
-    <>
+    <main className="auth-shell">
       {isAuthenticated ? (
         <Navigate to="/" replace />
       ) : (
-        <>
-          <section className="flex flex-1 justify-center items-center flex-col py-10">
+        <div className="auth-layout">
+          <section className="auth-panel">
             <Outlet />
           </section>
 
           <img
             src="/assets/images/side-img.svg"
             alt="logo"
-            className="hidden xl:block h-screen w-1/2 object-cover bg-no-repeat"
+            className="auth-art hidden xl:block"
           />
-        </>
+        </div>
       )}
-    </>
+    </main>
   );
 }
