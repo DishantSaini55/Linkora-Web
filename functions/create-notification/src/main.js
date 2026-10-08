@@ -1,5 +1,3 @@
-import { Client, Databases, ID, Permission, Role } from "node-appwrite";
-
 const allowedTypes = new Set(["like", "save"]);
 
 export default async ({ req, res, error }) => {
@@ -28,27 +26,38 @@ export default async ({ req, res, error }) => {
       return res.json({ message: "The actor does not match the session." }, 403);
     }
 
-    const client = new Client()
-      .setEndpoint(process.env.APPWRITE_ENDPOINT)
-      .setProject(process.env.APPWRITE_PROJECT_ID)
-      .setKey(process.env.APPWRITE_API_KEY);
-    const databases = new Databases(client);
-
-    const notification = await databases.createDocument(
-      process.env.APPWRITE_DATABASE_ID,
-      process.env.APPWRITE_NOTIFICATION_COLLECTION_ID,
-      ID.unique(),
+    const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
+    const response = await fetch(
+      `${endpoint}/databases/${process.env.APPWRITE_DATABASE_ID}/collections/${process.env.APPWRITE_NOTIFICATION_COLLECTION_ID}/documents`,
       {
-        recipient,
-        actor,
-        type,
-        post,
-        read: false,
-      },
-      [Permission.read(Role.user(recipient))]
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Appwrite-Project": process.env.APPWRITE_PROJECT_ID,
+          "X-Appwrite-Key": process.env.APPWRITE_API_KEY,
+        },
+        body: JSON.stringify({
+          documentId: "unique()",
+          data: {
+            recipient,
+            actor,
+            type,
+            post,
+            read: false,
+          },
+          permissions: [`read("user:${recipient}")`],
+        }),
+      }
     );
+    const responseBody = await response.text();
 
-    return res.json(notification);
+    if (!response.ok) {
+      throw new Error(
+        `Appwrite returned ${response.status}: ${responseBody || "empty response"}`
+      );
+    }
+
+    return res.json(JSON.parse(responseBody));
   } catch (caughtError) {
     const message =
       caughtError instanceof Error ? caughtError.message : String(caughtError);
