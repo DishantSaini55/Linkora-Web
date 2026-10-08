@@ -36,6 +36,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
   const savedPostRecord = currentUser?.save.find(
     (record: Models.Document) => record.post.$id === post.$id
   );
+  const creatorAccountId = post.creator.accountId;
 
   useEffect(() => {
     setIsSaved(!!savedPostRecord);
@@ -61,10 +62,10 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
       { postId: post.$id, likesArray },
       {
         onSuccess: () => {
-          if (post.creator.$id !== userId) {
+          if (creatorAccountId && creatorAccountId !== userId) {
             createNotification(
               {
-                recipient: post.creator.$id,
+                recipient: creatorAccountId,
                 actor: userId,
                 type: "like",
                 post: post.$id,
@@ -126,10 +127,10 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
       { userId, postId: post.$id },
       {
         onSuccess: () => {
-          if (post.creator.$id !== userId) {
+          if (creatorAccountId && creatorAccountId !== userId) {
             createNotification(
               {
-                recipient: post.creator.$id,
+                recipient: creatorAccountId,
                 actor: userId,
                 type: "save",
                 post: post.$id,
