@@ -30,14 +30,33 @@ const Profile = () => {
   const { user } = useUserContext();
   const { pathname } = useLocation();
 
-  const { data: currentUser } = useGetUserById(id || "");
+  const {
+    data: currentUser,
+    isLoading,
+    isError,
+    refetch,
+  } = useGetUserById(id || "");
 
-  if (!currentUser)
+  if (isLoading)
     return (
       <div className="flex-center w-full h-full">
         <Loader />
       </div>
     );
+
+  if (isError || !currentUser) {
+    return (
+      <div className="flex-center h-full w-full flex-col">
+        <p className="text-light-4">We couldn&apos;t load this profile.</p>
+        <button
+          type="button"
+          className="text-primary-500 small-semibold mt-3"
+          onClick={() => refetch()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="profile-container">
@@ -132,7 +151,13 @@ const Profile = () => {
       <Routes>
         <Route
           index
-          element={<GridPostList posts={currentUser.posts} showUser={false} />}
+          element={
+            currentUser.posts.length ? (
+              <GridPostList posts={currentUser.posts} showUser={false} />
+            ) : (
+              <p className="text-light-4 text-center w-full">No posts yet.</p>
+            )
+          }
         />
         {currentUser.$id === user.id && (
           <Route path="/liked-posts" element={<LikedPosts />} />

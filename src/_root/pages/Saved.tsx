@@ -4,7 +4,12 @@ import { GridPostList, Loader } from "@/components/shared";
 import { useGetCurrentUser } from "@/lib/react-query/queries";
 
 const Saved = () => {
-  const { data: currentUser } = useGetCurrentUser();
+  const {
+    data: currentUser,
+    isLoading,
+    isError,
+    refetch,
+  } = useGetCurrentUser();
 
   const savePosts = currentUser?.save
     .map((savePost: Models.Document) => ({
@@ -28,11 +33,21 @@ const Saved = () => {
         <h2 className="h3-bold md:h2-bold text-left w-full">Saved Posts</h2>
       </div>
 
-      {!currentUser ? (
+      {isLoading ? (
         <Loader />
+      ) : isError ? (
+        <div className="text-center">
+          <p className="text-light-4">We couldn&apos;t load saved posts.</p>
+          <button
+            type="button"
+            className="text-primary-500 small-semibold mt-3"
+            onClick={() => refetch()}>
+            Try again
+          </button>
+        </div>
       ) : (
         <ul className="w-full flex justify-center max-w-5xl gap-9">
-          {savePosts.length === 0 ? (
+          {savePosts?.length === 0 ? (
             <p className="text-light-4">No available posts</p>
           ) : (
             <GridPostList posts={savePosts} showStats={false} />

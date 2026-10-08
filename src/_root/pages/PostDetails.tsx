@@ -16,10 +16,18 @@ const PostDetails = () => {
   const { id } = useParams();
   const { user } = useUserContext();
 
-  const { data: post, isLoading } = useGetPostById(id);
-  const { data: userPosts, isLoading: isUserPostLoading } = useGetUserPosts(
-    post?.creator.$id
-  );
+  const {
+    data: post,
+    isLoading,
+    isError: isPostError,
+    refetch: refetchPost,
+  } = useGetPostById(id);
+  const {
+    data: userPosts,
+    isLoading: isUserPostLoading,
+    isError: isUserPostsError,
+    refetch: refetchUserPosts,
+  } = useGetUserPosts(post?.creator.$id);
   const { mutate: deletePost } = useDeletePost();
 
   const relatedPosts = userPosts?.documents.filter(
@@ -48,8 +56,18 @@ const PostDetails = () => {
         </Button>
       </div>
 
-      {isLoading || !post ? (
+      {isLoading ? (
         <Loader />
+      ) : isPostError || !post ? (
+        <div className="flex-center flex-col py-10">
+          <p className="text-light-4">We couldn&apos;t load this post.</p>
+          <button
+            type="button"
+            className="text-primary-500 small-semibold mt-3"
+            onClick={() => refetchPost()}>
+            Try again
+          </button>
+        </div>
       ) : (
         <div className="post_details-card">
           <img
@@ -143,10 +161,22 @@ const PostDetails = () => {
         <h3 className="body-bold md:h3-bold w-full my-10">
           More Related Posts
         </h3>
-        {isUserPostLoading || !relatedPosts ? (
+        {isUserPostLoading ? (
           <Loader />
-        ) : (
+        ) : isUserPostsError ? (
+          <div className="text-center">
+            <p className="text-light-4">Related posts couldn&apos;t load.</p>
+            <button
+              type="button"
+              className="text-primary-500 small-semibold mt-3"
+              onClick={() => refetchUserPosts()}>
+              Try again
+            </button>
+          </div>
+        ) : relatedPosts?.length ? (
           <GridPostList posts={relatedPosts} />
+        ) : (
+          <p className="text-light-4 text-center">No other posts yet.</p>
         )}
       </div>
     </div>

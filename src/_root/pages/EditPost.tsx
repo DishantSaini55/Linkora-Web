@@ -6,7 +6,12 @@ import { useGetPostById } from "@/lib/react-query/queries";
 
 const EditPost = () => {
   const { id } = useParams();
-  const { data: post, isLoading } = useGetPostById(id);
+  const {
+    data: post,
+    isLoading,
+    isError,
+    refetch,
+  } = useGetPostById(id);
 
   if (isLoading)
     return (
@@ -14,6 +19,20 @@ const EditPost = () => {
         <Loader />
       </div>
     );
+
+  if (isError || !post) {
+    return (
+      <div className="flex-center h-full w-full flex-col">
+        <p className="text-light-4">We couldn&apos;t load this post.</p>
+        <button
+          type="button"
+          className="text-primary-500 small-semibold mt-3"
+          onClick={() => refetch()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1">
@@ -29,7 +48,7 @@ const EditPost = () => {
           <h2 className="h3-bold md:h2-bold text-left w-full">Edit Post</h2>
         </div>
 
-        {isLoading ? <Loader /> : <PostForm action="Update" post={post} />}
+        <PostForm action="Update" post={post} />
       </div>
     </div>
   );
