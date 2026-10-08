@@ -50,7 +50,16 @@ export default async ({ req, res, error }) => {
 
     return res.json(notification);
   } catch (caughtError) {
-    error(caughtError instanceof Error ? caughtError.message : String(caughtError));
+    const message =
+      caughtError instanceof Error ? caughtError.message : String(caughtError);
+    const cause =
+      caughtError instanceof Error && caughtError.cause
+        ? ` Cause: ${String(caughtError.cause)}`
+        : "";
+
+    error(
+      `${message}${cause} Endpoint: ${process.env.APPWRITE_ENDPOINT || "missing"}`
+    );
     return res.json({ message: "Notification creation failed." }, 500);
   }
 };
