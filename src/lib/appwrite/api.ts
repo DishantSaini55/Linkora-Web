@@ -541,7 +541,8 @@ export async function getComments(
 export async function createComment(
   postId: string,
   authorId: string,
-  content: string
+  content: string,
+  authorAccountId: string
 ) {
   if (!isCommentsConfigured) {
     throw new Error("Comments collection is not configured.");
@@ -552,7 +553,36 @@ export async function createComment(
     appwriteConfig.commentsCollectionId,
     ID.unique(),
     { post: postId, author: authorId, content },
-    [Permission.read(Role.any())]
+    [
+      Permission.read(Role.any()),
+      Permission.update(Role.user(authorAccountId)),
+      Permission.delete(Role.user(authorAccountId)),
+    ]
+  );
+}
+
+export async function updateComment(commentId: string, content: string) {
+  if (!isCommentsConfigured) {
+    throw new Error("Comments collection is not configured.");
+  }
+
+  return databases.updateDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.commentsCollectionId,
+    commentId,
+    { content }
+  );
+}
+
+export async function deleteComment(commentId: string) {
+  if (!isCommentsConfigured) {
+    throw new Error("Comments collection is not configured.");
+  }
+
+  return databases.deleteDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.commentsCollectionId,
+    commentId
   );
 }
 

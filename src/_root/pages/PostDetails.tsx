@@ -10,6 +10,8 @@ import {
   useDeletePost,
   useGetComments,
   useCreateComment,
+  useUpdateComment,
+  useDeleteComment,
   useGetUsers,
 } from "@/lib/react-query/queries";
 import { multiFormatDateString } from "@/lib/utils";
@@ -23,6 +25,8 @@ const PostDetails = () => {
   const { user } = useUserContext();
   const { toast } = useToast();
   const [comment, setComment] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState("");
 
   const {
     data: post,
@@ -41,6 +45,10 @@ const PostDetails = () => {
   const { data: users } = useGetUsers();
   const { mutate: createComment, isLoading: isCreatingComment } =
     useCreateComment();
+  const { mutate: updateComment, isLoading: isUpdatingComment } =
+    useUpdateComment();
+  const { mutate: deleteComment, isLoading: isDeletingComment } =
+    useDeleteComment();
 
   const relatedPosts = userPosts?.documents.filter(
     (userPost) => userPost.$id !== id
@@ -56,12 +64,39 @@ const PostDetails = () => {
     if (!id || !content || isCreatingComment) return;
 
     createComment(
-      { postId: id, authorId: user.id, content },
+      {
+        postId: id,
+        authorId: user.id,
+        authorAccountId: user.accountId,
+        content,
+      },
       {
         onSuccess: () => setComment(""),
         onError: (error) =>
           toast({
             title: "Comment failed",
+            description:
+              error instanceof Error ? error.message : "Please try again.",
+            variant: "destructive",
+          }),
+      }
+    );
+  };
+
+  const handleUpdateComment = (commentId: string) => {
+    const content = editingContent.trim();
+    if (!content || isUpdatingComment) return;
+
+    updateComment(
+      { commentId, content, postId: id || "" },
+      {
+        onSuccess: () => {
+          setEditingCommentId(null);
+          setEditingContent("");
+        },
+        onError: (error) =>
+          toast({
+            title: "Comment update failed",
             description:
               error instanceof Error ? error.message : "Please try again.",
             variant: "destructive",
@@ -239,7 +274,61 @@ const PostDetails = () => {
                         </p>
                       </div>
                     </div>
-                    <p className="body-regular mt-3">{item.content}</p>
+                    {editingCommentId === item.$id ? (
+                      <div className="mt-3 flex gap-2">
+                        <Textarea
+                          value={editingContent}
+                          onChange={(event) =>
+                            setEditingContent(event.target.value)
+                          }
+                          maxLength={500}
+                          className="shad-textarea"
+                        />
+                        <Button
+                          type="button"
+                          className="shad-button_primary"
+                          onClick={() => handleUpdateComment(item.$id)}
+                          disabled={
+                            !editingContent.trim() || isUpdatingComment
+                          }>
+                          Save
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="body-regular mt-3">{item.content}</p>
+                    )}
+                    {author?.$id === user.id && editingCommentId !== item.$id ? (
+                      <div className="mt-3 flex gap-3">
+                        <button
+                          type="button"
+                          className="small-semibold text-primary-500"
+                          onClick={() => {
+                            setEditingCommentId(item.$id);
+                            setEditingContent(item.content);
+                          }}>
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="small-semibold text-red-400"
+                          disabled={isDeletingComment}
+                          onClick={() =>
+                            deleteComment(item.$id, {
+                              onError: (error) =>
+                                toast({
+                                  title: "Comment deletion failed",
+                                  description:
+                                    error instanceof Error
+                                      ? error.message
+                                      : "Please try again.",
+                                  variant: "destructive",
+                                }),
+                            })
+                          }>
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
                   </li>
                 );
               })}

@@ -35,6 +35,8 @@ import {
   deleteFollow,
   getComments,
   createComment,
+  updateComment,
+  deleteComment,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -341,14 +343,49 @@ export const useCreateComment = () => {
       postId,
       authorId,
       content,
+      authorAccountId,
     }: {
       postId: string;
       authorId: string;
       content: string;
-    }) => createComment(postId, authorId, content),
+      authorAccountId: string;
+    }) => createComment(postId, authorId, content, authorAccountId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_COMMENTS, variables.postId],
+      });
+    },
+  });
+};
+
+export const useUpdateComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      commentId,
+      content,
+    }: {
+      commentId: string;
+      content: string;
+      postId: string;
+    }) => updateComment(commentId, content),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_COMMENTS, variables.postId],
+      });
+    },
+  });
+};
+
+export const useDeleteComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (commentId: string) => deleteComment(commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_COMMENTS],
       });
     },
   });
