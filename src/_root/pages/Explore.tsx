@@ -5,15 +5,35 @@ import { Input } from "@/components/ui";
 import useDebounce from "@/hooks/useDebounce";
 import { GridPostList, Loader } from "@/components/shared";
 import { useGetPosts, useSearchPosts } from "@/lib/react-query/queries";
+import { Models } from "appwrite";
 
 export type SearchResultProps = {
   isSearchFetching: boolean;
-  searchedPosts: any;
+  searchedPosts?: Models.DocumentList<Models.Document>;
+  isSearchError: boolean;
+  refetchSearch: () => void;
 };
 
-const SearchResults = ({ isSearchFetching, searchedPosts }: SearchResultProps) => {
+const SearchResults = ({
+  isSearchFetching,
+  searchedPosts,
+  isSearchError,
+  refetchSearch,
+}: SearchResultProps) => {
   if (isSearchFetching) {
     return <Loader />;
+  } else if (isSearchError) {
+    return (
+      <div className="w-full text-center">
+        <p className="text-light-4">Search failed. Please try again.</p>
+        <button
+          type="button"
+          className="text-primary-500 small-semibold mt-3"
+          onClick={refetchSearch}>
+          Try again
+        </button>
+      </div>
+    );
   } else if (searchedPosts && searchedPosts.documents.length > 0) {
     return <GridPostList posts={searchedPosts.documents} />;
   } else {
@@ -25,11 +45,23 @@ const SearchResults = ({ isSearchFetching, searchedPosts }: SearchResultProps) =
 
 const Explore = () => {
   const { ref, inView } = useInView();
-  const { data: posts, fetchNextPage, hasNextPage } = useGetPosts();
+  const {
+    data: posts,
+    fetchNextPage,
+    hasNextPage,
+    isLoading: isPostsLoading,
+    isError: isPostsError,
+    refetch: refetchPosts,
+  } = useGetPosts();
 
   const [searchValue, setSearchValue] = useState("");
   const debouncedSearch = useDebounce(searchValue, 500);
-  const { data: searchedPosts, isFetching: isSearchFetching } = useSearchPosts(debouncedSearch);
+  const {
+    data: searchedPosts,
+    isFetching: isSearchFetching,
+    isError: isSearchError,
+    refetch: refetchSearch,
+  } = useSearchPosts(debouncedSearch);
 
   useEffect(() => {
     if (inView && !searchValue) {
@@ -37,12 +69,26 @@ const Explore = () => {
     }
   }, [inView, searchValue]);
 
-  if (!posts)
+  if (isPostsLoading && !posts)
     return (
       <div className="flex-center w-full h-full">
         <Loader />
       </div>
     );
+
+  if (isPostsError) {
+    return (
+      <div className="flex-center h-full w-full flex-col">
+        <p className="text-light-4">We couldn&apos;t load Explore.</p>
+        <button
+          type="button"
+          className="text-primary-500 small-semibold mt-3"
+          onClick={() => refetchPosts()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   const shouldShowSearchResults = searchValue !== "";
   const shouldShowPosts = !shouldShowSearchResults && 
@@ -91,6 +137,8 @@ const Explore = () => {
           <SearchResults
             isSearchFetching={isSearchFetching}
             searchedPosts={searchedPosts}
+            isSearchError={isSearchError}
+            refetchSearch={refetchSearch}
           />
         ) : shouldShowPosts ? (
           <p className="text-light-4 mt-10 text-center w-full">End of posts</p>

@@ -11,21 +11,39 @@ const Home = () => {
     data: posts,
     isLoading: isPostLoading,
     isError: isErrorPosts,
+    refetch: refetchPosts,
   } = useGetRecentPosts();
   const {
     data: creators,
     isLoading: isUserLoading,
     isError: isErrorCreators,
+    refetch: refetchCreators,
   } = useGetUsers(10);
 
   if (isErrorPosts || isErrorCreators) {
     return (
       <div className="flex flex-1">
         <div className="home-container">
-          <p className="body-medium text-light-1">Something bad happened</p>
+          <p className="body-medium text-light-1">
+            We couldn&apos;t load your home feed.
+          </p>
+          <button
+            type="button"
+            className="text-primary-500 small-semibold mt-3"
+            onClick={() => refetchPosts()}>
+            Try again
+          </button>
         </div>
         <div className="home-creators">
-          <p className="body-medium text-light-1">Something bad happened</p>
+          <p className="body-medium text-light-1">
+            We couldn&apos;t load creators.
+          </p>
+          <button
+            type="button"
+            className="text-primary-500 small-semibold mt-3"
+            onClick={() => refetchCreators()}>
+            Try again
+          </button>
         </div>
       </div>
     );
@@ -38,6 +56,10 @@ const Home = () => {
           <h2 className="h3-bold md:h2-bold text-left w-full">Home Feed</h2>
           {isPostLoading && !posts ? (
             <Loader />
+          ) : posts?.documents.length === 0 ? (
+            <p className="text-light-4 mt-10 text-center">
+              No posts yet. Create the first one!
+            </p>
           ) : (
             <ul className="flex flex-col flex-1 gap-9 w-full ">
               {posts?.documents.map((post: Models.Document) => (
@@ -54,6 +76,10 @@ const Home = () => {
         <h3 className="h3-bold text-light-1">Top Creators</h3>
         {isUserLoading && !creators ? (
           <Loader />
+        ) : creators?.documents.length === 0 ? (
+          <p className="text-light-4 mt-10 text-center">
+            No creators to show yet.
+          </p>
         ) : (
           <ul className="grid 2xl:grid-cols-2 gap-6">
             {creators?.documents.map((creator) => (
