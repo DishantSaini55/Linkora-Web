@@ -11,6 +11,64 @@ export default async ({ req, res, error }) => {
       typeof req.body === "string"
         ? JSON.parse(req.body)
         : req.body || {};
+    if (
+      body.action === "mark-read" &&
+      typeof body.recipient === "string" &&
+      body.recipient === actor
+    ) {
+      const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
+      const baseUrl =
+        `${endpoint}/databases/${process.env.APPWRITE_DATABASE_ID}` +
+        `/collections/${process.env.APPWRITE_NOTIFICATION_COLLECTION_ID}`;
+      const listUrl = new URL(`${baseUrl}/documents`);
+      listUrl.searchParams.append(
+        "queries[]",
+        JSON.stringify({ method: "equal", attribute: "recipient", values: [actor] })
+      );
+      const listResponse = await fetch(listUrl, {
+        headers: {
+          "X-Appwrite-Project": process.env.APPWRITE_PROJECT_ID,
+          "X-Appwrite-Key": process.env.APPWRITE_API_KEY,
+        },
+      });
+      const listBody = await listResponse.text();
+      if (!listResponse.ok) {
+        throw new Error(
+          `Appwrite returned ${listResponse.status}: ${listBody || "empty response"}`
+        );
+      }
+
+      const documents = JSON.parse(listBody).documents || [];
+      await Promise.all(
+        documents
+          .filter((document) => !document.read)
+          .map(async (document) => {
+            const updateResponse = await fetch(
+              `${baseUrl}/documents/${document.$id}`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Appwrite-Project": process.env.APPWRITE_PROJECT_ID,
+                  "X-Appwrite-Key": process.env.APPWRITE_API_KEY,
+                },
+                body: JSON.stringify({ data: { read: true } }),
+              }
+            );
+            if (!updateResponse.ok) {
+              const updateBody = await updateResponse.text();
+              throw new Error(
+                `Appwrite returned ${updateResponse.status}: ${
+                  updateBody || "empty response"
+                }`
+              );
+            }
+          })
+      );
+
+      return res.json({ updated: documents.filter((document) => !document.read).length });
+    }
+
     const { recipient, actor: requestedActor, type, post } = body;
 
     if (

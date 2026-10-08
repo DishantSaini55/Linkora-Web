@@ -1,14 +1,26 @@
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
 
 import { Loader } from "@/components/shared";
 import { useUserContext } from "@/context/AuthContext";
-import { useGetNotifications, useGetUsers } from "@/lib/react-query/queries";
+import {
+  useGetNotifications,
+  useGetUsers,
+  useMarkNotificationsRead,
+} from "@/lib/react-query/queries";
 
 const Notifications = () => {
   const { user } = useUserContext();
   const { data: notifications, isLoading, isError, refetch } =
     useGetNotifications(user.accountId);
   const { data: users } = useGetUsers();
+  const { mutate: markNotificationsRead } = useMarkNotificationsRead();
+
+  useEffect(() => {
+    if (notifications?.some((notification) => !notification.read)) {
+      markNotificationsRead(user.accountId);
+    }
+  }, [notifications, user.accountId, markNotificationsRead]);
 
   if (isLoading) {
     return <Loader />;

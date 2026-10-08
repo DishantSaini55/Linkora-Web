@@ -426,6 +426,24 @@ export async function getNotifications(
     return notifications.documents;
 }
 
+export async function markNotificationsRead(recipient: string) {
+  if (
+    !isNotificationsConfigured ||
+    typeof appwriteConfig.notificationFunctionId !== "string"
+  ) {
+    return null;
+  }
+
+  return functions.createExecution(
+    appwriteConfig.notificationFunctionId,
+    JSON.stringify({ action: "mark-read", recipient }),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
+  );
+}
+
 // ============================== GET USER'S POST
 export async function getUserPosts(userId?: string) {
   if (!userId) throw new Error("A user ID is required.");

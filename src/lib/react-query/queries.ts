@@ -28,6 +28,7 @@ import {
   deleteSavedPost,
   createNotification,
   getNotifications,
+  markNotificationsRead,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -228,6 +229,19 @@ export const useGetNotifications = (recipient?: string) => {
     queryKey: [QUERY_KEYS.GET_NOTIFICATIONS, recipient],
     queryFn: () => getNotifications(recipient || ""),
     enabled: !!recipient,
+  });
+};
+
+export const useMarkNotificationsRead = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (recipient: string) => markNotificationsRead(recipient),
+    onSuccess: (_, recipient) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_NOTIFICATIONS, recipient],
+      });
+    },
   });
 };
 
