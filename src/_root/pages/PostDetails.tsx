@@ -10,6 +10,7 @@ import {
 } from "@/lib/react-query/queries";
 import { multiFormatDateString } from "@/lib/utils";
 import { useUserContext } from "@/context/AuthContext";
+import { getFilePreview } from "@/lib/appwrite/api";
 
 const PostDetails = () => {
   const navigate = useNavigate();
@@ -71,7 +72,11 @@ const PostDetails = () => {
       ) : (
         <div className="post_details-card">
           <img
-            src={post?.imageUrl}
+            src={
+              post?.imageId
+                ? getFilePreview(post.imageId).toString()
+                : post?.imageUrl
+            }
             alt="creator"
             className="post_details-img"
           />

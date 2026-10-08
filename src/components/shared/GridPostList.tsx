@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { PostStats } from "@/components/shared";
 import { useUserContext } from "@/context/AuthContext";
+import { getFilePreview } from "@/lib/appwrite/api";
 
 type GridPostListProps = {
   posts: Models.Document[];
@@ -23,7 +24,11 @@ const GridPostList = ({
         <li key={post.$id} className="relative min-w-80 h-80">
           <Link to={`/posts/${post.$id}`} className="grid-post_link">
             <img
-              src={post.imageUrl}
+              src={
+                post.imageId
+                  ? getFilePreview(post.imageId).toString()
+                  : post.imageUrl
+              }
               alt="post"
               className="h-full w-full object-cover"
             />
