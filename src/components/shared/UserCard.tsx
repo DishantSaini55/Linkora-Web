@@ -1,5 +1,6 @@
 import { Models } from "appwrite";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { useUserContext } from "@/context/AuthContext";
 import {
   useCreateFollow,
@@ -10,6 +11,12 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 
 import { Button } from "../ui/button";
+import {
+  isUserBlocked,
+  isUserMuted,
+  toggleBlockedUser,
+  toggleMutedUser,
+} from "@/lib/clientPreferences";
 
 type UserCardProps = {
   user: Models.Document;
@@ -27,6 +34,8 @@ const UserCard = ({ user }: UserCardProps) => {
   const { mutate: deleteFollow, isLoading: isDeleting } = useDeleteFollow();
   const isFollowing = !!follow;
   const isBusy = isCreating || isDeleting;
+  const [blocked, setBlocked] = useState(() => isUserBlocked(user.$id));
+  const [muted, setMuted] = useState(() => isUserMuted(user.$id));
 
   const handleFollow = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -75,6 +84,21 @@ const UserCard = ({ user }: UserCardProps) => {
     );
   };
 
+  const handlePreference = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    preference: "block" | "mute"
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (preference === "block") {
+      toggleBlockedUser(user.$id);
+      setBlocked((current) => !current);
+    } else {
+      toggleMutedUser(user.$id);
+      setMuted((current) => !current);
+    }
+  };
+
   return (
     <Link to={`/profile/${user.$id}`} className="user-card">
       <img
@@ -92,14 +116,32 @@ const UserCard = ({ user }: UserCardProps) => {
         </p>
       </div>
 
-      <Button
-        type="button"
-        size="sm"
-        className="shad-button_primary px-5"
-        disabled={isBusy}
-        onClick={handleFollow}>
-        {isFollowing ? "Following" : "Follow"}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          size="sm"
+          className="shad-button_primary px-5"
+          disabled={isBusy}
+          onClick={handleFollow}>
+          {isFollowing ? "Following" : "Follow"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          aria-label={`${blocked ? "Unblock" : "Block"} ${user.name}`}
+          onClick={(event) => handlePreference(event, "block")}>
+          {blocked ? "Unblock" : "Block"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          aria-label={`${muted ? "Unmute" : "Mute"} ${user.name}`}
+          onClick={(event) => handlePreference(event, "mute")}>
+          {muted ? "Unmute" : "Mute"}
+        </Button>
+      </div>
     </Link>
   );
 };
