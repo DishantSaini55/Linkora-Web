@@ -147,9 +147,12 @@ export default async ({ req, res, error }) => {
             documentId: "unique()",
             data: {
               sender: senderProfileId,
+              senderAccountId: actor,
               recipient: recipientProfileId,
               content: content.trim(),
               read: false,
+              attachmentId: body.attachmentId || "",
+              attachmentUrl: body.attachmentUrl || "",
             },
             permissions: [
               `read("user:${actor}")`,
@@ -169,6 +172,38 @@ export default async ({ req, res, error }) => {
         );
       }
       return res.json(JSON.parse(responseBody));
+    }
+
+    if (body.action === "edit-message" || body.action === "delete-message") {
+      if (typeof body.messageId !== "string") {
+        return res.json({ message: "A message ID is required." }, 400);
+      }
+      const path =
+        `/databases/${process.env.APPWRITE_DATABASE_ID}` +
+        `/collections/${process.env.APPWRITE_MESSAGES_COLLECTION_ID}` +
+        `/documents/${body.messageId}`;
+      const existing = await appwriteRequest(path);
+      if (existing.senderAccountId !== actor) {
+        return res.json({ message: "Only the sender can modify this message." }, 403);
+      }
+      if (body.action === "delete-message") {
+        await appwriteRequest(path, { method: "DELETE" });
+        return res.json({ deleted: true });
+      }
+      if (typeof body.content !== "string" || !body.content.trim()) {
+        return res.json({ message: "Message content is required." }, 400);
+      }
+      return res.json(
+        await appwriteRequest(path, {
+          method: "PATCH",
+          body: JSON.stringify({
+            data: {
+              content: body.content.trim().slice(0, 2000),
+              editedAt: new Date().toISOString(),
+            },
+          }),
+        })
+      );
     }
 
     if (

@@ -4,16 +4,22 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button, Textarea } from "@/components/ui";
 import { Loader } from "@/components/shared";
 import { useUserContext } from "@/context/AuthContext";
-import { getUserImageUrl } from "@/lib/appwrite/api";
+import { getUserImageUrl, getFileView, uploadFile } from "@/lib/appwrite/api";
+import {
+  appwriteConfig,
+  client,
+  isMessagesConfigured,
+} from "@/lib/appwrite/config";
 import {
   useCreateMessage,
   useGetMessages,
   useGetUserById,
   useGetUsers,
   useMarkMessageRead,
+  useUpdateMessage,
+  useDeleteMessage,
 } from "@/lib/react-query/queries";
 import { useToast } from "@/components/ui/use-toast";
-import { isMessagesConfigured } from "@/lib/appwrite/config";
 import { isUserBlocked } from "@/lib/clientPreferences";
 
 const Messages = () => {
@@ -21,12 +27,37 @@ const Messages = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { data: messages = [], isLoading } = useGetMessages(user.id);
+  const { data: messages = [], isLoading, refetch: refetchMessages } = useGetMessages(user.id);
   const { data: users } = useGetUsers();
   const { data: selectedUser } = useGetUserById(userId || "");
   const { mutate: createMessage, isLoading: isSending } = useCreateMessage();
   const { mutate: markMessageRead } = useMarkMessageRead();
+  const { mutate: updateMessage } = useUpdateMessage();
+  const { mutate: deleteMessage } = useDeleteMessage();
   const [content, setContent] = useState("");
+  const [search, setSearch] = useState("");
+  const [attachment, setAttachment] = useState<{ id: string; url: string }>();
+  const [isTyping, setIsTyping] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const unsubscribe = client.subscribe(
+      `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.messagesCollectionId}.documents`,
+      () => refetchMessages()
+    );
+    return unsubscribe;
+  }, [refetchMessages]);
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
 
   const conversations = useMemo(() => {
     const participantIds = new Set<string>();
@@ -44,8 +75,14 @@ const Messages = () => {
             (message) => message.sender === id || message.recipient === id
           ),
       }))
-      .filter((conversation) => conversation.participant);
-  }, [messages, user.id, users]);
+      .filter(
+        (conversation) =>
+          conversation.participant &&
+          `${conversation.participant.name} ${conversation.participant.username}`
+            .toLowerCase()
+            .includes(search.toLowerCase())
+      );
+  }, [messages, search, user.id, users]);
 
   const thread = useMemo(
     () =>
@@ -89,9 +126,14 @@ const Messages = () => {
         recipient: selectedUser.$id,
         recipientAccountId: selectedUser.accountId,
         content: trimmed,
+        attachment,
       },
       {
-        onSuccess: () => setContent(""),
+        onSuccess: () => {
+          setContent("");
+          setAttachment(undefined);
+          setIsTyping(false);
+        },
         onError: (error) =>
           toast({
             title: "Message failed",
@@ -101,6 +143,34 @@ const Messages = () => {
           }),
       }
     );
+  };
+
+  const handleAttachment = async (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Attachment rejected",
+        description: "Choose an image up to 10 MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const uploaded = await uploadFile(file);
+      setAttachment({
+        id: uploaded.$id,
+        url: getFileView(uploaded.$id).toString(),
+      });
+    } catch (error) {
+      toast({
+        title: "Attachment upload failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -131,6 +201,13 @@ const Messages = () => {
               New message
             </Link>
           </div>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search conversations"
+            className="shad-input mt-4"
+            aria-label="Search conversations"
+          />
           {isLoading ? (
             <Loader />
           ) : !conversations.length ? (
@@ -191,10 +268,15 @@ const Messages = () => {
                     {selectedUser.name}
                   </Link>
                   <p className="small-regular text-light-3">
-                    @{selectedUser.username}
+                    @{selectedUser.username} · {online ? "online" : "offline"}
                   </p>
                 </div>
               </div>
+              {isTyping && (
+                <p className="small-regular text-primary-400 mt-3">
+                  {selectedUser.name} is typing...
+                </p>
+              )}
               <div className="custom-scrollbar flex flex-1 flex-col gap-3 overflow-y-auto py-5">
                 {!thread.length ? (
                   <p className="m-auto text-light-3">
@@ -212,6 +294,32 @@ const Messages = () => {
                       <p className="whitespace-pre-wrap break-words">
                         {message.content}
                       </p>
+                      {message.attachmentUrl && (
+                        <img
+                          src={message.attachmentUrl}
+                          alt="Message attachment"
+                          className="mt-2 max-h-56 rounded-lg object-cover"
+                        />
+                      )}
+                      {message.sender === user.id && (
+                        <div className="mt-2 flex gap-2 text-xs opacity-80">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = window.prompt("Edit message", message.content);
+                              if (next?.trim()) updateMessage({ messageId: message.$id, senderProfileId: user.id, content: next });
+                            }}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm("Delete this message?")) deleteMessage({ messageId: message.$id, senderProfileId: user.id });
+                            }}>
+                            Delete
+                          </button>
+                        </div>
+                      )}
                       <small className="mt-1 block opacity-70">
                         {new Date(message.$createdAt).toLocaleString()}
                       </small>
@@ -220,9 +328,23 @@ const Messages = () => {
                 )}
               </div>
               <form onSubmit={handleSubmit} className="flex gap-3 border-t border-dark-4 pt-4">
+                <label className="self-end rounded-md bg-dark-4 p-3 text-sm">
+                  <span aria-hidden="true">+</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(event) => {
+                      handleAttachment(event.target.files?.[0]);
+                    }}
+                  />
+                </label>
                 <Textarea
                   value={content}
-                  onChange={(event) => setContent(event.target.value)}
+                  onChange={(event) => {
+                    setContent(event.target.value);
+                    setIsTyping(Boolean(event.target.value));
+                  }}
                   placeholder="Write a message..."
                   maxLength={2000}
                   className="min-h-[48px] resize-none bg-dark-4"
@@ -231,10 +353,18 @@ const Messages = () => {
                 <Button
                   type="submit"
                   className="shad-button_primary self-end"
-                  disabled={isSending || !content.trim()}>
+                  disabled={isSending || isUploading || (!content.trim() && !attachment)}>
                   Send
                 </Button>
               </form>
+              {attachment && (
+                <button
+                  type="button"
+                  className="small-regular text-light-3 mt-2 text-left"
+                  onClick={() => setAttachment(undefined)}>
+                  Remove attached image
+                </button>
+              )}
             </>
           )}
         </section>

@@ -207,6 +207,10 @@ export function getFilePreview(fileId: string, width = 2000, height = 2000) {
   );
 }
 
+export function getFileView(fileId: string) {
+  return storage.getFileView(appwriteConfig.storageId, fileId);
+}
+
 export function getPostImageUrl(post: Models.Document) {
   const imageId = post.imageid || post.imageId;
   return imageId
@@ -1008,7 +1012,8 @@ export async function createMessage(
   senderAccountId: string,
   recipient: string,
   recipientAccountId: string,
-  content: string
+  content: string,
+  attachment?: { id: string; url: string }
 ) {
   if (!isMessagesConfigured) {
     throw new Error("Messages collection is not configured.");
@@ -1029,6 +1034,8 @@ export async function createMessage(
       recipientProfileId: recipient,
       senderProfileId: sender,
       content: content.trim(),
+      attachmentId: attachment?.id,
+      attachmentUrl: attachment?.url,
     }),
     false,
     "/",
@@ -1050,6 +1057,36 @@ export async function createMessage(
       if (execution.responseBody) message = execution.responseBody;
     }
     throw new Error(message);
+  }
+  return execution;
+}
+
+export async function updateMessage(messageId: string, senderProfileId: string, content: string) {
+  const execution = await functions.createExecution(
+    appwriteConfig.messageFunctionId,
+    JSON.stringify({ action: "edit-message", messageId, senderProfileId, content: content.trim() }),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
+  );
+  if (execution.responseStatusCode < 200 || execution.responseStatusCode >= 300) {
+    throw new Error(execution.responseBody || "Message edit failed.");
+  }
+  return execution;
+}
+
+export async function deleteMessage(messageId: string, senderProfileId: string) {
+  const execution = await functions.createExecution(
+    appwriteConfig.messageFunctionId,
+    JSON.stringify({ action: "delete-message", messageId, senderProfileId }),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
+  );
+  if (execution.responseStatusCode < 200 || execution.responseStatusCode >= 300) {
+    throw new Error(execution.responseBody || "Message deletion failed.");
   }
   return execution;
 }

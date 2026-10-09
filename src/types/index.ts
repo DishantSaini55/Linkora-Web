@@ -60,4 +60,7 @@ export type IMessage = {
   recipient: string;
   content: string;
   read: boolean;
+  attachmentId?: string;
+  attachmentUrl?: string;
+  editedAt?: string;
 };

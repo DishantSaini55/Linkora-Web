@@ -54,6 +54,8 @@ import {
   createMessage,
   markMessageRead,
   deleteModeratedContent,
+  updateMessage,
+  deleteMessage,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -470,19 +472,22 @@ export const useCreateMessage = () => {
       recipient,
       recipientAccountId,
       content,
+      attachment,
     }: {
       sender: string;
       senderAccountId: string;
       recipient: string;
       recipientAccountId: string;
       content: string;
+      attachment?: { id: string; url: string };
     }) =>
       createMessage(
         sender,
         senderAccountId,
         recipient,
         recipientAccountId,
-        content
+        content,
+        attachment
       ),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -492,6 +497,26 @@ export const useCreateMessage = () => {
         queryKey: [QUERY_KEYS.GET_MESSAGES, variables.recipient],
       });
     },
+  });
+};
+
+export const useUpdateMessage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ messageId, senderProfileId, content }: { messageId: string; senderProfileId: string; content: string }) =>
+      updateMessage(messageId, senderProfileId, content),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_MESSAGES] }),
+  });
+};
+
+export const useDeleteMessage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ messageId, senderProfileId }: { messageId: string; senderProfileId: string }) =>
+      deleteMessage(messageId, senderProfileId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_MESSAGES] }),
   });
 };
 
