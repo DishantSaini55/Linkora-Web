@@ -13,9 +13,18 @@ export const appwriteConfig = {
   reportsCollectionId: import.meta.env.VITE_APPWRITE_REPORTS_COLLECTION_ID,
   safetyCollectionId: import.meta.env.VITE_APPWRITE_SAFETY_COLLECTION_ID,
   draftsCollectionId: import.meta.env.VITE_APPWRITE_DRAFTS_COLLECTION_ID,
+  messagesCollectionId: import.meta.env.VITE_APPWRITE_MESSAGES_COLLECTION_ID,
+  preferencesCollectionId:
+    import.meta.env.VITE_APPWRITE_PREFERENCES_COLLECTION_ID,
   notificationCollectionId:
     import.meta.env.VITE_APPWRITE_NOTIFICATION_COLLECTION_ID,
   notificationFunctionId:
+    import.meta.env.VITE_APPWRITE_NOTIFICATION_FUNCTION_ID,
+  messageFunctionId:
+    import.meta.env.VITE_APPWRITE_MESSAGE_FUNCTION_ID ||
+    import.meta.env.VITE_APPWRITE_NOTIFICATION_FUNCTION_ID,
+  moderationFunctionId:
+    import.meta.env.VITE_APPWRITE_MODERATION_FUNCTION_ID ||
     import.meta.env.VITE_APPWRITE_NOTIFICATION_FUNCTION_ID,
 };
 
@@ -54,6 +63,22 @@ export const isSafetyConfigured =
 export const isDraftsConfigured =
   typeof appwriteConfig.draftsCollectionId === "string" &&
   appwriteConfig.draftsCollectionId.length > 0;
+
+export const isPreferencesConfigured =
+  typeof appwriteConfig.preferencesCollectionId === "string" &&
+  appwriteConfig.preferencesCollectionId.length > 0;
+
+export const isMessagesConfigured =
+  typeof appwriteConfig.messagesCollectionId === "string" &&
+  appwriteConfig.messagesCollectionId.length > 0;
+
+export const isMessageFunctionConfigured =
+  typeof appwriteConfig.messageFunctionId === "string" &&
+  appwriteConfig.messageFunctionId.length > 0;
+
+export const isModerationFunctionConfigured =
+  typeof appwriteConfig.moderationFunctionId === "string" &&
+  appwriteConfig.moderationFunctionId.length > 0;
 
 export const client = new Client();
 

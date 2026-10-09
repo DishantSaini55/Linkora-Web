@@ -25,12 +25,27 @@ export const sidebarLinks = [
     label: "Notifications",
   },
   {
+    imgURL: "/assets/icons/chat.svg",
+    route: "/messages",
+    label: "Messages",
+  },
+  {
     imgURL: "/assets/icons/gallery-add.svg",
     route: "/create-post",
     label: "Create Post",
   },
   {
-    imgURL: "/assets/icons/profile.svg",
+    imgURL: "/assets/icons/gallery-add.svg",
+    route: "/drafts",
+    label: "Drafts",
+  },
+  {
+    imgURL: "/assets/icons/posts.svg",
+    route: "/analytics",
+    label: "Analytics",
+  },
+  {
+    imgURL: "/assets/icons/people.svg",
     route: "/settings",
     label: "Settings",
   },

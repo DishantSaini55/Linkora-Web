@@ -17,6 +17,9 @@ const writeIds = (key: string, ids: string[]) => {
   window.dispatchEvent(new CustomEvent("linkora:preferences-changed"));
 };
 
+export const setBlockedUserIds = (ids: string[]) => writeIds(BLOCKED_USERS_KEY, ids);
+export const setMutedUserIds = (ids: string[]) => writeIds(MUTED_USERS_KEY, ids);
+
 export const getBlockedUserIds = () => readIds(BLOCKED_USERS_KEY);
 export const getMutedUserIds = () => readIds(MUTED_USERS_KEY);
 

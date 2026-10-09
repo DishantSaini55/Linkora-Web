@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { PostStats } from "@/components/shared";
 import { multiFormatDateString } from "@/lib/utils";
 import { useUserContext } from "@/context/AuthContext";
-import { getFilePreview } from "@/lib/appwrite/api";
+import { getPostImageUrl } from "@/lib/appwrite/api";
 
 type PostCardProps = {
   post: Models.Document;
@@ -13,6 +13,8 @@ type PostCardProps = {
 
 const PostCard = ({ post }: PostCardProps) => {
   const { user } = useUserContext();
+  const fallbackImage =
+    typeof post.imageUrl === "string" ? post.imageUrl : undefined;
 
   if (!post.creator) return;
 
@@ -76,11 +78,14 @@ const PostCard = ({ post }: PostCardProps) => {
         </div>
 
         <img
-          src={
-            post.imageId
-              ? getFilePreview(post.imageId, 1200, 900).toString()
-              : post.imageUrl || "/assets/icons/profile-placeholder.svg"
-          }
+          src={getPostImageUrl(post)}
+          onError={(event) => {
+            if (fallbackImage && event.currentTarget.src !== fallbackImage) {
+              event.currentTarget.src = fallbackImage;
+              return;
+            }
+            event.currentTarget.src = "/assets/icons/profile-placeholder.svg";
+          }}
           alt="post image"
           className="post-card_img"
           loading="lazy"

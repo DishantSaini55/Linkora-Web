@@ -7,10 +7,12 @@ export type INavLink = {
 export type IUpdateUser = {
   userId: string;
   name: string;
+  username: string;
   bio: string;
-  imageId: string;
+  imageId?: string;
   imageUrl: URL | string;
   file: File[];
+  removeImage?: boolean;
 };
 
 export type INewPost = {
@@ -39,6 +41,9 @@ export type IUser = {
   email: string;
   imageUrl: string;
   bio: string;
+  imageId?: string;
+  nameChangedAt?: string;
+  usernameChangedAt?: string;
 };
 
 export type INewUser = {
@@ -46,4 +51,13 @@ export type INewUser = {
   email: string;
   username: string;
   password: string;
+};
+
+export type IMessage = {
+  $id: string;
+  $createdAt: string;
+  sender: string;
+  recipient: string;
+  content: string;
+  read: boolean;
 };

@@ -51,6 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: currentAccount.email,
           imageUrl: currentAccount.imageUrl,
           bio: currentAccount.bio,
+          imageId: currentAccount.imageId,
+          nameChangedAt: currentAccount.nameChangedAt,
+          usernameChangedAt: currentAccount.usernameChangedAt,
         });
         setIsAuthenticated(true);
 

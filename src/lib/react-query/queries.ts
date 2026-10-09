@@ -13,6 +13,7 @@ import {
   getCurrentUser,
   signOutAccount,
   getUsers,
+  searchUsers,
   createPost,
   getPostById,
   updatePost,
@@ -45,6 +46,14 @@ import {
   saveDraft,
   deleteDraft,
   getReports,
+  updateReport,
+  getNotificationPreferences,
+  saveNotificationPreferences,
+  getMessagesForUser,
+  getUnreadMessageCount,
+  createMessage,
+  markMessageRead,
+  deleteModeratedContent,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -129,6 +138,13 @@ export const useSearchPosts = (searchTerm: string) => {
   });
 };
 
+export const useSearchUsers = (searchTerm: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.SEARCH_USERS, searchTerm],
+    queryFn: () => searchUsers(searchTerm),
+    enabled: !!searchTerm,
+  });
+
 export const useGetRecentPosts = () => {
   return useQuery({
     queryKey: [QUERY_KEYS.GET_RECENT_POSTS],
@@ -175,10 +191,29 @@ export const useUpdatePost = () => {
 export const useDeletePost = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ postId, imageId }: { postId?: string; imageId: string }) =>
+    mutationFn: ({ postId, imageId }: { postId?: string; imageId?: string }) =>
       deletePost(postId, imageId),
     onSuccess: (_data, variables) => {
       invalidatePostQueries(queryClient, variables.postId);
+    },
+  });
+};
+
+export const useDeleteModeratedContent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      targetType,
+      targetId,
+      reportId,
+    }: {
+      targetType: "post" | "comment";
+      targetId: string;
+      reportId: string;
+    }) => deleteModeratedContent(targetType, targetId, reportId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_POSTS] });
     },
   });
 };
@@ -277,6 +312,32 @@ export const useGetReports = () =>
     queryFn: getReports,
   });
 
+export const useUpdateReport = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      reportId,
+      status,
+      moderatorNote,
+      reviewedBy,
+    }: {
+      reportId: string;
+      status: "pending" | "reviewed" | "dismissed" | "action_taken";
+      moderatorNote?: string;
+      reviewedBy?: string;
+    }) =>
+      updateReport(reportId, {
+        status,
+        moderatorNote,
+        reviewedBy,
+        reviewedAt: new Date().toISOString(),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+    },
+  });
+};
+
 export const useGetSafetyRelationships = (owner?: string) =>
   useQuery<Models.Document[]>({
     queryKey: [QUERY_KEYS.GET_SAFETY_RELATIONSHIPS, owner],
@@ -292,12 +353,15 @@ export const useSetSafetyRelationship = () => {
       target,
       type,
       existingId,
+      ownerAccountId,
     }: {
       owner: string;
       target: string;
       type: "block" | "mute";
       existingId?: string;
-    }) => setSafetyRelationship(owner, target, type, existingId),
+      ownerAccountId?: string;
+    }) =>
+      setSafetyRelationship(owner, target, type, existingId, ownerAccountId),
     onSuccess: (_, variables) =>
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_SAFETY_RELATIONSHIPS, variables.owner],
@@ -319,11 +383,19 @@ export const useSaveDraft = () => {
       owner,
       draft,
       draftId,
+      ownerAccountId,
     }: {
       owner: string;
-      draft: { caption: string; location: string; tags: string };
+      draft: {
+        caption: string;
+        location: string;
+        tags: string;
+        imageId?: string;
+        imageUrl?: string;
+      };
       draftId?: string;
-    }) => saveDraft(owner, draft, draftId),
+      ownerAccountId?: string;
+    }) => saveDraft(owner, draft, draftId, ownerAccountId),
     onSuccess: (_, variables) =>
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_DRAFTS, variables.owner],
@@ -337,6 +409,98 @@ export const useDeleteDraft = () => {
     mutationFn: deleteDraft,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_DRAFTS] }),
+  });
+};
+
+export const useGetNotificationPreferences = (owner?: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_PREFERENCES, owner],
+    queryFn: () => getNotificationPreferences(owner || ""),
+    enabled: !!owner,
+  });
+
+export const useSaveNotificationPreferences = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      owner,
+      accountId,
+      preferences,
+      preferenceId,
+    }: {
+      owner: string;
+      accountId: string;
+      preferences: {
+        likes: boolean;
+        comments: boolean;
+        follows: boolean;
+        saves: boolean;
+      };
+      preferenceId?: string;
+    }) =>
+      saveNotificationPreferences(owner, accountId, preferences, preferenceId),
+    onSuccess: (_, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_PREFERENCES, variables.owner],
+      }),
+  });
+};
+
+export const useGetMessages = (userId?: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_MESSAGES, userId],
+    queryFn: () => getMessagesForUser(userId || ""),
+    enabled: !!userId,
+  });
+
+export const useGetUnreadMessageCount = (userId?: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_UNREAD_MESSAGES, userId],
+    queryFn: () => getUnreadMessageCount(userId || ""),
+    enabled: !!userId,
+    refetchInterval: 30000,
+  });
+
+export const useCreateMessage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      sender,
+      senderAccountId,
+      recipient,
+      recipientAccountId,
+      content,
+    }: {
+      sender: string;
+      senderAccountId: string;
+      recipient: string;
+      recipientAccountId: string;
+      content: string;
+    }) =>
+      createMessage(
+        sender,
+        senderAccountId,
+        recipient,
+        recipientAccountId,
+        content
+      ),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_MESSAGES, variables.sender],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_MESSAGES, variables.recipient],
+      });
+    },
+  });
+};
+
+export const useMarkMessageRead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: markMessageRead,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_MESSAGES] }),
   });
 };
 

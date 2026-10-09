@@ -1,9 +1,12 @@
-const CACHE_NAME = "linkora-shell-v1";
+const CACHE_NAME = "linkora-shell-v2";
 const APP_SHELL = ["/", "/index.html", "/assets/icons/favicon.ico"];
+const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll([...APP_SHELL, OFFLINE_URL])
+    )
   );
   self.skipWaiting();
 });
@@ -35,6 +38,10 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/")))
+      .catch(() =>
+        caches
+          .match(event.request)
+          .then((cached) => cached || caches.match(OFFLINE_URL))
+      )
   );
 });

@@ -19,6 +19,7 @@ import {
   useCreateNotification,
 } from "@/lib/react-query/queries";
 import { GridPostList, Loader } from "@/components/shared";
+import { getUserImageUrl } from "@/lib/appwrite/api";
 
 interface StabBlockProps {
   value: string | number;
@@ -78,7 +79,7 @@ const Profile = () => {
         <div className="flex xl:flex-row flex-col max-xl:items-center flex-1 gap-7">
           <img
             src={
-              currentUser.imageUrl || "/assets/icons/profile-placeholder.svg"
+              getUserImageUrl(currentUser)
             }
             alt="profile"
             className="w-28 h-28 lg:h-36 lg:w-36 rounded-full"
@@ -120,6 +121,19 @@ const Profile = () => {
                 <p className="flex whitespace-nowrap small-medium">
                   Edit Profile
                 </p>
+              </Link>
+            </div>
+            <div className={`${user.id === currentUser.$id && "hidden"}`}>
+              <Link
+                to={`/messages/${currentUser.$id}`}
+                className="h-12 bg-dark-4 px-5 text-light-1 flex-center gap-2 rounded-lg">
+                <img
+                  src="/assets/icons/chat.svg"
+                  alt=""
+                  width={20}
+                  height={20}
+                />
+                <p className="flex whitespace-nowrap small-medium">Message</p>
               </Link>
             </div>
             <div className={`${user.id === id && "hidden"}`}>

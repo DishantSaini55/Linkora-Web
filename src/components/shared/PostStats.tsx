@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 
 import { checkIsLiked } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { enqueueLike } from "@/lib/offlineQueue";
 import {
   useLikePost,
   useSavePost,
@@ -100,6 +101,15 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
         },
         onError: (error) => {
           setLikes(previousLikes);
+          if (!navigator.onLine) {
+            enqueueLike({ postId: post.$id, likes: likesArray });
+            setLikes(likesArray);
+            toast({
+              title: "Like queued",
+              description: "It will sync when you reconnect.",
+            });
+            return;
+          }
           toast({
             title: "Like update failed",
             description:
@@ -140,7 +150,12 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
       { userId, postId: post.$id },
       {
         onSuccess: () => {
-          if (creatorAccountId && actorAccountId && creatorAccountId !== actorAccountId) {
+          if (
+            localStorage.getItem("linkora:notify-saves") !== "false" &&
+            creatorAccountId &&
+            actorAccountId &&
+            creatorAccountId !== actorAccountId
+          ) {
             createNotification(
               {
                 recipient: creatorAccountId,

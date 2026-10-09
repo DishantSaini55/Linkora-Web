@@ -3,8 +3,12 @@ import { useInView } from "react-intersection-observer";
 
 import { Input } from "@/components/ui";
 import useDebounce from "@/hooks/useDebounce";
-import { GridPostList, Loader } from "@/components/shared";
-import { useGetPosts, useSearchPosts } from "@/lib/react-query/queries";
+import { GridPostList, Loader, UserCard } from "@/components/shared";
+import {
+  useGetPosts,
+  useSearchPosts,
+  useSearchUsers,
+} from "@/lib/react-query/queries";
 import { Models } from "appwrite";
 import { useClientPreferences } from "@/hooks/useClientPreferences";
 
@@ -65,6 +69,13 @@ const Explore = () => {
     isError: isSearchError,
     refetch: refetchSearch,
   } = useSearchPosts(debouncedSearch);
+  const { data: searchedUsers } = useSearchUsers(debouncedSearch);
+  const visibleSearchedUsers =
+    searchedUsers?.documents.filter(
+      (candidate: Models.Document) =>
+      !blockedUserIds.includes(candidate.$id) &&
+      !mutedUserIds.includes(candidate.$id)
+    ) || [];
 
   useEffect(() => {
     if (inView && !searchValue) {
@@ -167,12 +178,26 @@ const Explore = () => {
 
       <div className="flex flex-wrap gap-9 w-full max-w-5xl">
         {shouldShowSearchResults ? (
-          <SearchResults
-            isSearchFetching={isSearchFetching}
-            searchedPosts={searchedPosts}
-            isSearchError={isSearchError}
-            refetchSearch={refetchSearch}
-          />
+          <>
+            {visibleSearchedUsers.length ? (
+              <div className="w-full">
+                <h3 className="body-bold mb-4">Creators</h3>
+                <ul className="grid gap-4 md:grid-cols-3">
+                  {visibleSearchedUsers.map((creator: Models.Document) => (
+                    <li key={creator.$id}>
+                      <UserCard user={creator} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <SearchResults
+              isSearchFetching={isSearchFetching}
+              searchedPosts={searchedPosts}
+              isSearchError={isSearchError}
+              refetchSearch={refetchSearch}
+            />
+          </>
         ) : shouldShowPosts ? (
           <p className="text-light-4 mt-10 text-center w-full">End of posts</p>
         ) : (

@@ -17,7 +17,16 @@ Add these variables to the Function's environment:
   the notifications table
 - `APPWRITE_DATABASE_ID`: the Linkora database ID
 - `APPWRITE_NOTIFICATION_COLLECTION_ID`: the notifications table ID
+- `APPWRITE_MESSAGES_COLLECTION_ID`: the private Messages table ID
+- `APPWRITE_REPORTS_COLLECTION_ID`: the Reports table ID
+- `APPWRITE_POST_COLLECTION_ID`: the Posts table ID
+- `APPWRITE_COMMENTS_COLLECTION_ID`: the Comments table ID
+- `MODERATOR_ACCOUNT_IDS`: comma-separated Appwrite Auth account IDs allowed to moderate
 
 Allow authenticated users to execute the Function, but do not expose the API
 key in the frontend. Set `VITE_APPWRITE_NOTIFICATION_FUNCTION_ID` in the
 frontend `.env.local` to the deployed Function ID.
+
+This Function also accepts the `send-message` action used by the messaging
+feature. Set `VITE_APPWRITE_MESSAGE_FUNCTION_ID` to this same Function ID, or
+leave it empty and the frontend will use the notification Function ID.

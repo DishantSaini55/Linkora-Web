@@ -13,6 +13,9 @@ import {
   Notifications,
   Settings,
   Moderation,
+  Drafts,
+  Analytics,
+  Messages,
 } from "@/_root/pages";
 import AuthLayout from "./_auth/AuthLayout";
 import RootLayout from "./_root/RootLayout";
@@ -55,6 +58,10 @@ const App = () => {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/all-users" element={<AllUsers />} />
           <Route path="/create-post" element={<CreatePost />} />
+          <Route path="/drafts" element={<Drafts />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/messages" element={<Messages />} />
+          <Route path="/messages/:userId" element={<Messages />} />
           <Route path="/update-post/:id" element={<EditPost />} />
           <Route path="/posts/:id" element={<PostDetails />} />
           <Route path="/profile/:id/*" element={<Profile />} />

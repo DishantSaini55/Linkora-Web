@@ -11,3 +11,6 @@ export { default as AllUsers } from "./AllUsers";
 export { default as Notifications } from "./Notifications";
 export { default as Settings } from "./Settings";
 export { default as Moderation } from "./Moderation";
+export { default as Drafts } from "./Drafts";
+export { default as Analytics } from "./Analytics";
+export { default as Messages } from "./Messages";

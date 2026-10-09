@@ -11,6 +11,7 @@ import {
   useGetSafetyRelationships,
 } from "@/lib/react-query/queries";
 import { useToast } from "@/components/ui/use-toast";
+import { getUserImageUrl } from "@/lib/appwrite/api";
 
 import { Button } from "../ui/button";
 import {
@@ -52,13 +53,6 @@ const UserCard = ({ user }: UserCardProps) => {
       deleteFollow(
         { followId: follow.$id, follower: currentUser.id, following: user.$id },
         {
-          onSuccess: () =>
-            createNotification({
-              recipient: user.accountId,
-              actor: currentUser.accountId,
-              type: "follow",
-              post: "",
-            }),
           onError: (error) =>
             toast({
               title: "Unfollow failed",
@@ -78,6 +72,16 @@ const UserCard = ({ user }: UserCardProps) => {
         followerAccountId: currentUser.accountId,
       },
       {
+        onSuccess: () => {
+          if (localStorage.getItem("linkora:notify-follows") !== "false") {
+            createNotification({
+              recipient: user.accountId,
+              actor: currentUser.accountId,
+              type: "follow",
+              post: "",
+            });
+          }
+        },
         onError: (error) =>
           toast({
             title: "Follow failed",
@@ -107,18 +111,32 @@ const UserCard = ({ user }: UserCardProps) => {
       (relationship) =>
         relationship.target === user.$id && relationship.type === type
     );
-    updateSafety({
-      owner: currentUser.id,
-      target: user.$id,
-      type,
-      existingId: existing?.$id,
-    });
+    updateSafety(
+      {
+        owner: currentUser.id,
+        ownerAccountId: currentUser.accountId,
+        target: user.$id,
+        type,
+        existingId: existing?.$id,
+      },
+      {
+        onError: (error) =>
+          toast({
+            title: `${preference === "block" ? "Block" : "Mute"} sync failed`,
+            description:
+              error instanceof Error
+                ? error.message
+                : "Your local preference was saved, but cloud sync failed.",
+            variant: "destructive",
+          }),
+      }
+    );
   };
 
   return (
     <Link to={`/profile/${user.$id}`} className="user-card">
       <img
-        src={user.imageUrl || "/assets/icons/profile-placeholder.svg"}
+        src={getUserImageUrl(user)}
         alt="creator"
         className="rounded-full w-14 h-14"
       />
@@ -132,11 +150,11 @@ const UserCard = ({ user }: UserCardProps) => {
         </p>
       </div>
 
-      <div className="flex gap-2">
+      <div className="user-card_actions">
         <Button
           type="button"
           size="sm"
-          className="shad-button_primary px-5"
+          className="shad-button_primary w-full px-2 text-xs"
           disabled={isBusy}
           onClick={handleFollow}>
           {isFollowing ? "Following" : "Follow"}
@@ -145,6 +163,7 @@ const UserCard = ({ user }: UserCardProps) => {
           type="button"
           size="sm"
           variant="ghost"
+          className="user-card_action"
           aria-label={`${blocked ? "Unblock" : "Block"} ${user.name}`}
           onClick={(event) => handlePreference(event, "block")}>
           {blocked ? "Unblock" : "Block"}
@@ -153,6 +172,7 @@ const UserCard = ({ user }: UserCardProps) => {
           type="button"
           size="sm"
           variant="ghost"
+          className="user-card_action"
           aria-label={`${muted ? "Unmute" : "Mute"} ${user.name}`}
           onClick={(event) => handlePreference(event, "mute")}>
           {muted ? "Unmute" : "Mute"}

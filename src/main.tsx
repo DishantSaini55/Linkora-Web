@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import { AuthProvider } from "@/context/AuthContext";
 import { QueryProvider } from "@/lib/react-query/QueryProvider";
+import { flushOfflineQueue } from "@/lib/offlineQueue";
 
 import App from "./App";
 
@@ -14,6 +15,12 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
     });
   });
 }
+
+window.addEventListener("online", () => {
+  flushOfflineQueue().catch((error) => {
+    console.error("Offline mutation sync failed.", error);
+  });
+});
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

@@ -13,6 +13,10 @@ import {
   isReportsConfigured,
   isSafetyConfigured,
   isDraftsConfigured,
+  isPreferencesConfigured,
+  isMessagesConfigured,
+  isMessageFunctionConfigured,
+  isModerationFunctionConfigured,
 } from "./config";
 import { IUpdatePost, INewPost, INewUser, IUpdateUser } from "@/types";
 
@@ -186,7 +190,8 @@ export async function uploadFile(file: File) {
   return storage.createFile(
     appwriteConfig.storageId,
     ID.unique(),
-    file
+    file,
+    [Permission.read(Role.users())]
   );
 }
 
@@ -200,6 +205,23 @@ export function getFilePreview(fileId: string, width = 2000, height = 2000) {
     "top",
     100
   );
+}
+
+export function getPostImageUrl(post: Models.Document) {
+  const imageId = post.imageid || post.imageId;
+  return imageId
+    ? storage
+        .getFileView(appwriteConfig.storageId, imageId)
+        .toString()
+    : post.imageUrl || "/assets/icons/profile-placeholder.svg";
+}
+
+export function getUserImageUrl(
+  user: Partial<Models.Document> & { imageId?: string; imageUrl?: string }
+) {
+  return user.imageId
+    ? storage.getFileView(appwriteConfig.storageId, user.imageId).toString()
+    : user.imageUrl || "/assets/icons/profile-placeholder.svg";
 }
 
 // ============================== DELETE FILE
@@ -312,8 +334,8 @@ export async function updatePost(post: IUpdatePost) {
 
 // ============================== DELETE POST
 export async function deletePost(postId?: string, imageId?: string) {
-  if (!postId || !imageId) {
-    throw new Error("A post ID and image ID are required.");
+  if (!postId) {
+    throw new Error("A post ID is required.");
   }
 
   try {
@@ -325,7 +347,7 @@ export async function deletePost(postId?: string, imageId?: string) {
 
     if (!statusCode) throw Error;
 
-    await deleteFile(imageId);
+    if (imageId) await deleteFile(imageId);
 
     return { status: "Ok" };
   } catch (error) {
@@ -600,7 +622,117 @@ export async function getReports() {
     appwriteConfig.reportsCollectionId,
     [Query.orderDesc("$createdAt"), Query.limit(100)]
   );
-  return result.documents;
+
+  return Promise.all(
+    result.documents.map(async (report) => {
+      const [reporterResult, targetResult] = await Promise.allSettled([
+        getUserByAccountId(report.reporter),
+        resolveReportTarget(report.targetType, report.targetId),
+      ]);
+
+      return {
+        ...report,
+        reporterProfile:
+          reporterResult.status === "fulfilled"
+            ? reporterResult.value
+            : null,
+        targetDetails:
+          targetResult.status === "fulfilled" ? targetResult.value : null,
+        detailsError:
+          reporterResult.status === "rejected" ||
+          targetResult.status === "rejected"
+            ? "Some report details are unavailable because the related record was deleted or cannot be read."
+            : null,
+      };
+    })
+  );
+}
+
+export async function updateReport(
+  reportId: string,
+  update: {
+    status: "pending" | "reviewed" | "dismissed" | "action_taken";
+    moderatorNote?: string;
+    reviewedBy?: string;
+    reviewedAt?: string;
+  }
+) {
+  if (!isReportsConfigured) {
+    throw new Error("Reports collection is not configured.");
+  }
+  if (!isModerationFunctionConfigured) {
+    throw new Error("Moderation Function is not configured.");
+  }
+  return executeModerationAction({
+    action: "update-report",
+    reportId,
+    ...update,
+  });
+}
+
+export async function deleteModeratedContent(
+  targetType: "post" | "comment",
+  targetId: string,
+  reportId: string
+) {
+  if (!isModerationFunctionConfigured) {
+    throw new Error("Moderation Function is not configured.");
+  }
+  return executeModerationAction({
+    action: "delete-content",
+    targetType,
+    targetId,
+    reportId,
+  });
+}
+
+async function executeModerationAction(payload: Record<string, unknown>) {
+  const execution = await functions.createExecution(
+    appwriteConfig.moderationFunctionId,
+    JSON.stringify(payload),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
+  );
+  if (
+    execution.status === "failed" ||
+    execution.responseStatusCode < 200 ||
+    execution.responseStatusCode >= 300
+  ) {
+    let message = "Moderation action failed.";
+    try {
+      const responseBody = JSON.parse(execution.responseBody || "{}");
+      if (typeof responseBody.message === "string") message = responseBody.message;
+    } catch {
+      if (execution.responseBody) message = execution.responseBody;
+    }
+    throw new Error(message);
+  }
+  return execution;
+}
+
+async function resolveReportTarget(
+  targetType: "post" | "comment",
+  targetId: string
+) {
+  if (targetType === "post") {
+    const post = await getPostById(targetId);
+    return { post, comment: null };
+  }
+
+  if (!isCommentsConfigured) {
+    throw new Error("Comments collection is not configured.");
+  }
+
+  const comment = await databases.getDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.commentsCollectionId,
+    targetId
+  );
+  const post = await getPostById(comment.post);
+
+  return { post, comment };
 }
 
 export async function getSafetyRelationships(userId: string) {
@@ -617,7 +749,8 @@ export async function setSafetyRelationship(
   owner: string,
   target: string,
   type: "block" | "mute",
-  existingId?: string
+  existingId?: string,
+  ownerAccountId?: string
 ) {
   if (!isSafetyConfigured) {
     throw new Error("Safety collection is not configured.");
@@ -634,7 +767,10 @@ export async function setSafetyRelationship(
     appwriteConfig.safetyCollectionId,
     ID.unique(),
     { owner, target, type },
-    [Permission.read(Role.user(owner)), Permission.delete(Role.user(owner))]
+    [
+      Permission.read(Role.user(ownerAccountId || owner)),
+      Permission.delete(Role.user(ownerAccountId || owner)),
+    ]
   );
 }
 
@@ -650,8 +786,15 @@ export async function getDrafts(owner: string) {
 
 export async function saveDraft(
   owner: string,
-  draft: { caption: string; location: string; tags: string },
-  draftId?: string
+  draft: {
+    caption: string;
+    location: string;
+    tags: string;
+    imageId?: string;
+    imageUrl?: string;
+  },
+  draftId?: string,
+  ownerAccountId?: string
 ) {
   if (!isDraftsConfigured) {
     throw new Error("Drafts collection is not configured.");
@@ -670,9 +813,9 @@ export async function saveDraft(
     ID.unique(),
     { owner, ...draft },
     [
-      Permission.read(Role.user(owner)),
-      Permission.update(Role.user(owner)),
-      Permission.delete(Role.user(owner)),
+      Permission.read(Role.user(ownerAccountId || owner)),
+      Permission.update(Role.user(ownerAccountId || owner)),
+      Permission.delete(Role.user(ownerAccountId || owner)),
     ]
   );
 }
@@ -685,6 +828,51 @@ export async function deleteDraft(draftId: string) {
     appwriteConfig.databaseId,
     appwriteConfig.draftsCollectionId,
     draftId
+  );
+}
+
+export type NotificationPreferences = {
+  likes: boolean;
+  comments: boolean;
+  follows: boolean;
+  saves: boolean;
+};
+
+export async function getNotificationPreferences(owner: string) {
+  if (!isPreferencesConfigured) return null;
+  const result = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.preferencesCollectionId,
+    [Query.equal("owner", owner), Query.limit(1)]
+  );
+  return result.documents[0] || null;
+}
+
+export async function saveNotificationPreferences(
+  owner: string,
+  accountId: string,
+  preferences: NotificationPreferences,
+  preferenceId?: string
+) {
+  if (!isPreferencesConfigured) return null;
+  if (preferenceId) {
+    return databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.preferencesCollectionId,
+      preferenceId,
+      preferences
+    );
+  }
+  return databases.createDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.preferencesCollectionId,
+    ID.unique(),
+    { owner, ...preferences },
+    [
+      Permission.read(Role.user(accountId)),
+      Permission.update(Role.user(accountId)),
+      Permission.delete(Role.user(accountId)),
+    ]
   );
 }
 
@@ -752,6 +940,14 @@ export async function getUsers(limit?: number) {
   );
 }
 
+export async function searchUsers(searchTerm: string) {
+  return databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.userCollectionId,
+    [Query.search("username", searchTerm), Query.limit(20)]
+  );
+}
+
 // ============================== GET USER BY ID
 export async function getUserById(userId: string) {
   return databases.getDocument(
@@ -761,22 +957,181 @@ export async function getUserById(userId: string) {
   );
 }
 
+export async function getUserByAccountId(accountId: string) {
+  const result = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.userCollectionId,
+    [Query.equal("accountId", accountId), Query.limit(1)]
+  );
+
+  return result.documents[0] ?? null;
+}
+
+export async function getMessagesForUser(userId: string) {
+  if (!isMessagesConfigured) return [];
+  const [sent, received] = await Promise.all([
+    databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.messagesCollectionId,
+      [Query.equal("sender", userId), Query.orderAsc("$createdAt"), Query.limit(100)]
+    ),
+    databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.messagesCollectionId,
+      [Query.equal("recipient", userId), Query.orderAsc("$createdAt"), Query.limit(100)]
+    ),
+  ]);
+  return [...sent.documents, ...received.documents].sort(
+    (a, b) => new Date(a.$createdAt).getTime() - new Date(b.$createdAt).getTime()
+  );
+}
+
+export async function getUnreadMessageCount(userId: string) {
+  if (!isMessagesConfigured) return 0;
+  const result = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.messagesCollectionId,
+    [Query.equal("recipient", userId), Query.equal("read", false), Query.limit(1)]
+  );
+  return result.total;
+}
+
+function normalizeAccountId(accountId: string) {
+  return accountId
+    .trim()
+    .replace(/^user:/, "")
+    .split("/", 1)[0];
+}
+
+export async function createMessage(
+  sender: string,
+  senderAccountId: string,
+  recipient: string,
+  recipientAccountId: string,
+  content: string
+) {
+  if (!isMessagesConfigured) {
+    throw new Error("Messages collection is not configured.");
+  }
+  if (!isMessageFunctionConfigured) {
+    throw new Error("Message Function is not configured.");
+  }
+  const senderId = normalizeAccountId(senderAccountId);
+  const recipientId = normalizeAccountId(recipientAccountId);
+  if (!senderId || !recipientId) {
+    throw new Error("Both message participants must have valid Appwrite account IDs.");
+  }
+  const execution = await functions.createExecution(
+    appwriteConfig.messageFunctionId,
+    JSON.stringify({
+      action: "send-message",
+      recipient: recipientId,
+      recipientProfileId: recipient,
+      senderProfileId: sender,
+      content: content.trim(),
+    }),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
+  );
+  if (
+    execution.status === "failed" ||
+    execution.responseStatusCode < 200 ||
+    execution.responseStatusCode >= 300
+  ) {
+    let message = "Message Function failed to create the message.";
+    try {
+      const responseBody = JSON.parse(execution.responseBody || "{}");
+      if (typeof responseBody.message === "string") {
+        message = responseBody.message;
+      }
+    } catch {
+      if (execution.responseBody) message = execution.responseBody;
+    }
+    throw new Error(message);
+  }
+  return execution;
+}
+
+export async function markMessageRead(messageId: string) {
+  if (!isMessagesConfigured) return null;
+  return databases.updateDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.messagesCollectionId,
+    messageId,
+    { read: true }
+  );
+}
+
 // ============================== UPDATE USER
 export async function updateUser(user: IUpdateUser) {
   const hasFileToUpdate = user.file.length > 0;
+  let uploadedFileId: string | undefined;
   try {
-    let image = {
+    const existingUser = await getUserById(user.userId);
+    const nameChanged = existingUser.name !== user.name;
+    const usernameChanged = existingUser.username !== user.username;
+    const nameChangedAt = existingUser.nameChangedAt
+      ? new Date(existingUser.nameChangedAt)
+      : null;
+    const daysSinceNameChange = nameChangedAt
+      ? (Date.now() - nameChangedAt.getTime()) / (1000 * 60 * 60 * 24)
+      : Infinity;
+
+    if (nameChanged && daysSinceNameChange < 30) {
+      throw new Error("You can change your name once every 30 days.");
+    }
+
+    const usernameChangedAt = existingUser.usernameChangedAt
+      ? new Date(existingUser.usernameChangedAt)
+      : null;
+    const daysSinceUsernameChange = usernameChangedAt
+      ? (Date.now() - usernameChangedAt.getTime()) / (1000 * 60 * 60 * 24)
+      : Infinity;
+
+    if (usernameChanged && daysSinceUsernameChange < 30) {
+      throw new Error("You can change your username once every 30 days.");
+    }
+
+    if (usernameChanged) {
+      const matchingUsers = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.userCollectionId,
+        [Query.equal("username", user.username), Query.limit(1)]
+      );
+      if (
+        matchingUsers.documents.some(
+          (matchingUser) => matchingUser.$id !== user.userId
+        )
+      ) {
+        throw new Error("That username is already taken.");
+      }
+    }
+
+    let image: { imageUrl: URL | string; imageId?: string } = {
       imageUrl: user.imageUrl,
       imageId: user.imageId,
     };
+
+    if (hasFileToUpdate || user.removeImage) {
+      if (user.removeImage && !hasFileToUpdate) {
+        image = {
+          imageUrl: avatars.getInitials(existingUser.name).toString(),
+        };
+      }
+    }
 
     if (hasFileToUpdate) {
       // Upload new file to appwrite storage
       const uploadedFile = await uploadFile(user.file[0]);
       if (!uploadedFile) throw Error;
+      uploadedFileId = uploadedFile.$id;
 
       // Get new file url
-      const fileUrl = getFilePreview(uploadedFile.$id);
+      const fileUrl = storage
+        .getFileView(appwriteConfig.storageId, uploadedFile.$id)
+        .toString();
       if (!fileUrl) {
         await deleteFile(uploadedFile.$id);
         throw Error;
@@ -792,29 +1147,32 @@ export async function updateUser(user: IUpdateUser) {
       user.userId,
       {
         name: user.name,
+        username: user.username,
         bio: user.bio,
         imageUrl: image.imageUrl,
-        imageId: image.imageId,
+        imageId: image.imageId || "",
+        ...(nameChanged ? { nameChangedAt: new Date().toISOString() } : {}),
+        ...(usernameChanged
+          ? { usernameChangedAt: new Date().toISOString() }
+          : {}),
       }
     );
 
     // Failed to update
     if (!updatedUser) {
-      // Delete new file that has been recently uploaded
-      if (hasFileToUpdate) {
-        await deleteFile(image.imageId);
-      }
-      // If no new file uploaded, just throw error
-      throw Error;
+      throw new Error("Appwrite did not update the profile.");
     }
 
     // Safely delete old file after successful update
-    if (user.imageId && hasFileToUpdate) {
+    if (user.imageId && (hasFileToUpdate || user.removeImage)) {
       await deleteFile(user.imageId);
     }
 
     return updatedUser;
   } catch (error) {
-    console.log(error);
+    if (uploadedFileId) {
+      await deleteFile(uploadedFileId).catch(() => undefined);
+    }
+    throw error;
   }
 }

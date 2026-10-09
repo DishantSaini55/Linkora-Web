@@ -366,6 +366,14 @@
     transform: translateY(-3px);
     border-color: rgba(135, 126, 255, 0.38);
   }
+
+  .user-card_actions {
+    @apply grid w-full grid-cols-3 gap-2;
+  }
+
+  .user-card_action {
+    @apply w-full px-1 text-xs text-light-2 hover:bg-light-4/10 hover:text-white;
+  }
 }
 
 @layer components {

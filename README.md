@@ -91,6 +91,24 @@ Populate `.env.local` with the public identifiers from your Appwrite project. Ne
 | `VITE_APPWRITE_REPORTS_COLLECTION_ID` | Private Reports table ID |
 | `VITE_APPWRITE_SAFETY_COLLECTION_ID` | Block/mute relationships table ID |
 | `VITE_APPWRITE_DRAFTS_COLLECTION_ID` | Cloud post drafts table ID |
+| `VITE_APPWRITE_PREFERENCES_COLLECTION_ID` | Optional cross-device notification preferences table ID |
+| `VITE_APPWRITE_MESSAGES_COLLECTION_ID` | Optional private Messages table ID |
+| `VITE_APPWRITE_MESSAGE_FUNCTION_ID` | Optional Function ID used to create private messages; defaults to the notification Function ID |
+
+The Users collection should also include these optional attributes:
+
+- `imageId` (string): the Storage file ID for the current profile picture.
+- `nameChangedAt` (datetime): set automatically when the display name changes.
+- `usernameChangedAt` (datetime): set automatically when the username changes.
+
+Create a **Key** index on `username` so profile updates can reject duplicate
+usernames reliably. Usernames may contain letters, numbers, underscores, and
+periods, and can be changed once every 30 days.
+
+Profile pictures accept PNG, JPG, and JPEG files up to 10 MB. The application
+stores the uploaded file ID and uses the Appwrite file-view URL so updated
+avatars remain visible across profile, navigation, search, and feed surfaces.
+Display names can be changed once every 30 days.
 
 Like/save notifications require the Appwrite Function in
 [`functions/create-notification`](./functions/create-notification). Configure
@@ -152,9 +170,66 @@ Optional advanced tables:
   authenticated Create, private Read, and owner Delete.
 - **Drafts**: `owner`, `caption`, `location`, and `tags`. Enable authenticated
   Create and private owner Read/Update/Delete.
+- **Notification Preferences**: `owner`, `likes`, `comments`, `follows`, and
+  `saves`. Enable authenticated Create and private owner Read/Update/Delete.
 - **Moderation**: the `/moderation` page reads Reports using Appwrite table
   permissions. Grant Read only to trusted moderator accounts; do not expose
   Reports with public Read.
+
+For the moderation actions, also add these optional Reports attributes:
+`status` (string, 30 characters), `moderatorNote` (string, 2200 characters),
+`reviewedBy` (string, 100 characters), and `reviewedAt` (datetime). Existing
+reports without `status` are treated as `pending`.
+
+The `/drafts` page lists, opens, updates, and deletes cloud drafts. The
+`/analytics` page calculates basic creator metrics from the signed-in user's
+posts. Images are intentionally not stored inside draft metadata; select the
+image again before publishing.
+
+Private messaging uses the optional `Messages` collection. Create these
+attributes:
+
+- `sender` (string, 100)
+- `recipient` (string, 100)
+- `content` (string, 2000)
+- `read` (boolean)
+
+Create key indexes on `sender`, `recipient`, and `read`. The app stores profile
+document IDs in `sender` and `recipient`. Message documents are created with
+read and update permissions for both participants, using their Appwrite
+authentication account IDs. Add the collection ID to `.env.local` as
+`VITE_APPWRITE_MESSAGES_COLLECTION_ID`, restart Vite, and open `/messages`.
+Users can also start a conversation from another user's profile.
+
+The browser cannot grant a second user's row permission directly. Deploy the
+existing `functions/create-notification` Function after adding its message
+action, give it `APPWRITE_MESSAGES_COLLECTION_ID`, and set
+`VITE_APPWRITE_MESSAGE_FUNCTION_ID` to that Function ID. The Function also
+needs the same `APPWRITE_API_KEY` database document-create access used for
+notifications.
+
+The same Function protects moderation actions. Set
+`MODERATOR_ACCOUNT_IDS` to a comma-separated allowlist of Appwrite Auth
+account IDs and add `APPWRITE_REPORTS_COLLECTION_ID`,
+`APPWRITE_POST_COLLECTION_ID`, and `APPWRITE_COMMENTS_COLLECTION_ID` to the
+Function environment. Report updates and reported-content deletion are then
+authorized server-side.
+
+### Recommended indexes
+
+Create key indexes on `Users.accountId`, `Users.username`, `Comments.post`, `Follows.follower`,
+`Follows.following`, `Reports.reporter`, `Reports.targetId`,
+`Safety.owner`, and `Drafts.owner`. Keep ID index lengths near 100 and enum
+values near 30 rather than using the maximum attribute length for every index.
+Keep the existing full-text index on `Users.username` as well if Explore username
+search is enabled.
+
+### Storage permissions
+
+The Media bucket must allow authenticated users to Read files. The client also
+adds authenticated file-read permission to newly uploaded files. If files were
+uploaded before this permission was configured, re-upload them or update their
+file permissions in Appwrite.
 
 ## Authentication
 
@@ -191,6 +266,9 @@ Check that the media bucket grants authenticated users **Create** permission. Al
 **An uploaded image does not display**
 
 Use PNG, JPEG, or WebP. Existing `.ico` files are not supported as feed-image previews.
+Open the Media bucket permissions and enable **Read** for authenticated users
+(`Users`). Existing files may need to be re-uploaded after changing this
+permission; newly uploaded files receive authenticated read access directly.
 
 ## Contributing
 

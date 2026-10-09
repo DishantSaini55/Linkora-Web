@@ -1,5 +1,33 @@
 const allowedTypes = new Set(["like", "save", "follow", "comment"]);
 
+function isModerator(accountId) {
+  return (process.env.MODERATOR_ACCOUNT_IDS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .includes(accountId);
+}
+
+async function appwriteRequest(path, options = {}) {
+  const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
+  const response = await fetch(`${endpoint}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Appwrite-Project": process.env.APPWRITE_PROJECT_ID,
+      "X-Appwrite-Key": process.env.APPWRITE_API_KEY,
+      ...(options.headers || {}),
+    },
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(
+      `Appwrite returned ${response.status}: ${text || "empty response"}`
+    );
+  }
+  return text ? JSON.parse(text) : {};
+}
+
 export default async ({ req, res, error }) => {
   try {
     const actor = req.headers["x-appwrite-user-id"];
@@ -11,6 +39,138 @@ export default async ({ req, res, error }) => {
       typeof req.body === "string"
         ? JSON.parse(req.body)
         : req.body || {};
+    if (
+      body.action === "update-report" ||
+      body.action === "delete-content"
+    ) {
+      if (!isModerator(actor)) {
+        return res.json({ message: "Moderator authorization is required." }, 403);
+      }
+
+      const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
+      if (body.action === "update-report") {
+        if (
+          typeof body.reportId !== "string" ||
+          !["pending", "reviewed", "dismissed", "action_taken"].includes(
+            body.status
+          )
+        ) {
+          return res.json({ message: "Invalid report update." }, 400);
+        }
+        return res.json(
+          await appwriteRequest(
+            `${databasePath}/collections/${process.env.APPWRITE_REPORTS_COLLECTION_ID}` +
+              `/documents/${body.reportId}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({
+                data: {
+                  status: body.status,
+                  moderatorNote:
+                    typeof body.moderatorNote === "string"
+                      ? body.moderatorNote.slice(0, 2200)
+                      : "",
+                  reviewedBy: actor,
+                  reviewedAt: new Date().toISOString(),
+                },
+              }),
+            }
+          )
+        );
+      }
+
+      if (
+        !["post", "comment"].includes(body.targetType) ||
+        typeof body.targetId !== "string" ||
+        typeof body.reportId !== "string"
+      ) {
+        return res.json({ message: "Invalid moderation target." }, 400);
+      }
+      const collectionId =
+        body.targetType === "post"
+          ? process.env.APPWRITE_POST_COLLECTION_ID
+          : process.env.APPWRITE_COMMENTS_COLLECTION_ID;
+      await appwriteRequest(
+        `${databasePath}/collections/${collectionId}/documents/${body.targetId}`,
+        { method: "DELETE" }
+      );
+      return res.json(
+        await appwriteRequest(
+          `${databasePath}/collections/${process.env.APPWRITE_REPORTS_COLLECTION_ID}` +
+            `/documents/${body.reportId}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              data: {
+                status: "action_taken",
+                reviewedBy: actor,
+                reviewedAt: new Date().toISOString(),
+              },
+            }),
+          }
+        )
+      );
+    }
+
+    if (body.action === "send-message") {
+      const {
+        recipient,
+        recipientProfileId,
+        senderProfileId,
+        content,
+      } = body;
+      if (
+        typeof recipient !== "string" ||
+        typeof recipientProfileId !== "string" ||
+        typeof senderProfileId !== "string" ||
+        typeof content !== "string" ||
+        !content.trim() ||
+        content.length > 2000 ||
+        senderProfileId.length === 0 ||
+        recipientProfileId.length === 0
+      ) {
+        return res.json({ message: "Invalid message payload." }, 400);
+      }
+
+      const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
+      const response = await fetch(
+        `${endpoint}/databases/${process.env.APPWRITE_DATABASE_ID}` +
+          `/collections/${process.env.APPWRITE_MESSAGES_COLLECTION_ID}/documents`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Appwrite-Project": process.env.APPWRITE_PROJECT_ID,
+            "X-Appwrite-Key": process.env.APPWRITE_API_KEY,
+          },
+          body: JSON.stringify({
+            documentId: "unique()",
+            data: {
+              sender: senderProfileId,
+              recipient: recipientProfileId,
+              content: content.trim(),
+              read: false,
+            },
+            permissions: [
+              `read("user:${actor}")`,
+              `read("user:${recipient}")`,
+              `update("user:${actor}")`,
+              `update("user:${recipient}")`,
+            ],
+          }),
+        }
+      );
+      const responseBody = await response.text();
+      if (!response.ok) {
+        throw new Error(
+          `Appwrite returned ${response.status}: ${
+            responseBody || "empty response"
+          }`
+        );
+      }
+      return res.json(JSON.parse(responseBody));
+    }
+
     if (
       body.action === "mark-read" &&
       typeof body.recipient === "string" &&

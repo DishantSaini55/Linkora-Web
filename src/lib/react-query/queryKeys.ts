@@ -17,6 +17,7 @@ export enum QUERY_KEYS {
 
   //  SEARCH KEYS
   SEARCH_POSTS = "getSearchPosts",
+  SEARCH_USERS = "searchUsers",
   GET_NOTIFICATIONS = "getNotifications",
   GET_FOLLOW_RELATIONSHIP = "getFollowRelationship",
   GET_FOLLOW_COUNTS = "getFollowCounts",
@@ -24,4 +25,7 @@ export enum QUERY_KEYS {
   GET_UNREAD_NOTIFICATIONS = "getUnreadNotifications",
   GET_SAFETY_RELATIONSHIPS = "getSafetyRelationships",
   GET_DRAFTS = "getDrafts",
+  GET_PREFERENCES = "getPreferences",
+  GET_MESSAGES = "getMessages",
+  GET_UNREAD_MESSAGES = "getUnreadMessages",
 }

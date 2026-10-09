@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "../ui/button";
 import { useUserContext } from "@/context/AuthContext";
+import { getUserImageUrl } from "@/lib/appwrite/api";
 import {
   useGetUnreadNotificationCount,
+  useGetUnreadMessageCount,
   useSignOutAccount,
 } from "@/lib/react-query/queries";
 import { useToast } from "@/components/ui/use-toast";
@@ -15,6 +17,7 @@ const Topbar = () => {
   const { user, setIsAuthenticated } = useUserContext();
   const { mutate: signOut, isSuccess } = useSignOutAccount();
   const { data: unreadCount } = useGetUnreadNotificationCount(user.accountId);
+  const { data: unreadMessageCount } = useGetUnreadMessageCount(user.id);
 
   useEffect(() => {
     if (isSuccess) {
@@ -49,6 +52,17 @@ const Topbar = () => {
             height={325}
           />
         </Link>
+        <Link
+          to="/messages"
+          className="relative flex-center"
+          aria-label="Messages">
+          <img src="/assets/icons/chat.svg" alt="messages" />
+          {unreadMessageCount ? (
+            <span className="absolute -right-2 -top-2 rounded-full bg-primary-500 px-1.5 text-xs text-white">
+              {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+            </span>
+          ) : null}
+        </Link>
 
         <div className="flex gap-4">
           <Link
@@ -74,7 +88,7 @@ const Topbar = () => {
             className="flex-center gap-3"
             aria-label="Open your profile">
             <img
-              src={user.imageUrl || "/assets/icons/profile-placeholder.svg"}
+              src={getUserImageUrl(user)}
               alt="profile"
               className="h-8 w-8 rounded-full"
             />

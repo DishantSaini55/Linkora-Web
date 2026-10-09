@@ -1,8 +1,8 @@
 import * as z from "zod";
 import { Models } from "appwrite";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
@@ -25,8 +25,10 @@ import {
   useUpdatePost,
   useSaveDraft,
   useGetDrafts,
+  useDeleteDraft,
 } from "@/lib/react-query/queries";
 import { isDraftsConfigured } from "@/lib/appwrite/config";
+import { uploadFile, getFilePreview } from "@/lib/appwrite/api";
 
 type PostFormProps = {
   post?: Models.Document;
@@ -35,8 +37,13 @@ type PostFormProps = {
 
 const PostForm = ({ post, action }: PostFormProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user } = useUserContext();
+  const selectedDraft = (location.state as { draft?: Models.Document } | null)
+    ?.draft;
+  const selectedDraftId = selectedDraft?.$id;
+  const [savedCloudImageUrl, setSavedCloudImageUrl] = useState<string>();
   const draftKey = `linkora:post-draft:${user.id}`;
   const savedDraft = (() => {
     if (action !== "Create" || post) return null;
@@ -50,12 +57,17 @@ const PostForm = ({ post, action }: PostFormProps) => {
   const form = useForm<z.infer<typeof PostValidation>>({
     resolver: zodResolver(PostValidation),
     defaultValues: {
-      caption: post ? post?.caption : savedDraft?.caption || "",
+      caption:
+        post?.caption || selectedDraft?.caption || savedDraft?.caption || "",
       file: [],
-      location: post ? post.location : savedDraft?.location || "",
+      location:
+        post?.location ||
+        selectedDraft?.location ||
+        savedDraft?.location ||
+        "",
       tags: post
         ? (Array.isArray(post.tags) ? post.tags : []).join(",")
-        : savedDraft?.tags || "",
+        : selectedDraft?.tags || savedDraft?.tags || "",
     },
   });
   const watchedValues = form.watch();
@@ -92,6 +104,7 @@ const PostForm = ({ post, action }: PostFormProps) => {
   const { mutateAsync: updatePost, isLoading: isLoadingUpdate } =
     useUpdatePost();
   const { mutateAsync: saveDraft, isLoading: isSavingDraft } = useSaveDraft();
+  const { mutateAsync: deleteDraft } = useDeleteDraft();
   const { data: cloudDrafts } = useGetDrafts(
     action === "Create" && !post ? user.id : undefined
   );
@@ -101,6 +114,7 @@ const PostForm = ({ post, action }: PostFormProps) => {
     if (
       action === "Create" &&
       !post &&
+      !selectedDraft &&
       latestDraft &&
       !form.formState.isDirty
     ) {
@@ -111,16 +125,31 @@ const PostForm = ({ post, action }: PostFormProps) => {
         tags: latestDraft.tags || "",
       });
     }
-  }, [action, cloudDrafts, form, post]);
+  }, [action, cloudDrafts, form, post, selectedDraft]);
 
   const handleSaveCloudDraft = async () => {
     try {
+      const selectedFile = form.getValues("file")?.[0];
+      let imageId = selectedDraft?.imageId;
+      let imageUrl = selectedDraft?.imageUrl;
+
+      if (selectedFile) {
+        const uploadedFile = await uploadFile(selectedFile);
+        imageId = uploadedFile.$id;
+        imageUrl = getFilePreview(uploadedFile.$id).toString();
+        setSavedCloudImageUrl(imageUrl);
+      }
+
       await saveDraft({
         owner: user.id,
+        ownerAccountId: user.accountId,
+        draftId: selectedDraftId,
         draft: {
           caption: form.getValues("caption"),
           location: form.getValues("location"),
           tags: form.getValues("tags"),
+          imageId,
+          imageUrl,
         },
       });
       toast({
@@ -172,6 +201,9 @@ const PostForm = ({ post, action }: PostFormProps) => {
 
       if (!newPost) throw new Error("Appwrite did not create the post.");
 
+      if (selectedDraftId) {
+        await deleteDraft(selectedDraftId);
+      }
       navigate("/");
       localStorage.removeItem(draftKey);
     } catch (error) {
@@ -214,7 +246,12 @@ const PostForm = ({ post, action }: PostFormProps) => {
               <FormControl>
                 <FileUploader
                   fieldChange={field.onChange}
-                  mediaUrl={post?.imageUrl}
+                  mediaUrl={
+                    post?.imageUrl ||
+                    selectedDraft?.imageUrl ||
+                    savedCloudImageUrl ||
+                    cloudDrafts?.[0]?.imageUrl
+                  }
                 />
               </FormControl>
               <FormMessage className="shad-form_message" />

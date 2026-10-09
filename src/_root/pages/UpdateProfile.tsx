@@ -18,6 +18,7 @@ import { ProfileUploader, Loader } from "@/components/shared";
 import { ProfileValidation } from "@/lib/validation";
 import { useUserContext } from "@/context/AuthContext";
 import { useGetUserById, useUpdateUser } from "@/lib/react-query/queries";
+import { getUserImageUrl } from "@/lib/appwrite/api";
 
 const UpdateProfile = () => {
   const { toast } = useToast();
@@ -28,6 +29,7 @@ const UpdateProfile = () => {
     resolver: zodResolver(ProfileValidation),
     defaultValues: {
       file: [],
+      removeImage: false,
       name: user.name,
       username: user.username,
       email: user.email,
@@ -66,14 +68,29 @@ const UpdateProfile = () => {
     );
   }
 
+  const nameChangedAt = currentUser.nameChangedAt
+    ? new Date(currentUser.nameChangedAt)
+    : null;
+  const canChangeName =
+    !nameChangedAt ||
+    (Date.now() - nameChangedAt.getTime()) / (1000 * 60 * 60 * 24) >= 30;
+  const usernameChangedAt = currentUser.usernameChangedAt
+    ? new Date(currentUser.usernameChangedAt)
+    : null;
+  const canChangeUsername =
+    !usernameChangedAt ||
+    (Date.now() - usernameChangedAt.getTime()) / (1000 * 60 * 60 * 24) >= 30;
+
   // Handler
   const handleUpdate = async (value: z.infer<typeof ProfileValidation>) => {
     try {
       const updatedUser = await updateUser({
         userId: currentUser.$id,
         name: value.name,
+        username: value.username,
         bio: value.bio,
         file: value.file,
+        removeImage: value.removeImage,
         imageUrl: currentUser.imageUrl,
         imageId: currentUser.imageId,
       });
@@ -86,6 +103,9 @@ const UpdateProfile = () => {
         name: updatedUser.name,
         bio: updatedUser.bio,
         imageUrl: updatedUser.imageUrl,
+        imageId: updatedUser.imageId,
+        nameChangedAt: updatedUser.nameChangedAt,
+        usernameChangedAt: updatedUser.usernameChangedAt,
       });
       navigate(`/profile/${id}`);
     } catch (error) {
@@ -125,8 +145,12 @@ const UpdateProfile = () => {
                 <FormItem className="flex">
                   <FormControl>
                     <ProfileUploader
-                      fieldChange={field.onChange}
-                      mediaUrl={currentUser.imageUrl}
+                      fieldChange={(files) => {
+                        field.onChange(files);
+                        form.setValue("removeImage", false);
+                      }}
+                      mediaUrl={getUserImageUrl(currentUser)}
+                      onRemove={() => form.setValue("removeImage", true)}
                     />
                   </FormControl>
                   <FormMessage className="shad-form_message" />
@@ -141,8 +165,18 @@ const UpdateProfile = () => {
                 <FormItem>
                   <FormLabel className="shad-form_label">Name</FormLabel>
                   <FormControl>
-                    <Input type="text" className="shad-input" {...field} />
+                    <Input
+                      type="text"
+                      className="shad-input"
+                      {...field}
+                      disabled={!canChangeName}
+                    />
                   </FormControl>
+                  {!canChangeName && (
+                    <p className="small-regular text-light-3">
+                      Your name can be changed again after 30 days.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -159,9 +193,14 @@ const UpdateProfile = () => {
                       type="text"
                       className="shad-input"
                       {...field}
-                      disabled
+                      disabled={!canChangeUsername}
                     />
                   </FormControl>
+                  {!canChangeUsername && (
+                    <p className="small-regular text-light-3">
+                      Your username can be changed again after 30 days.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

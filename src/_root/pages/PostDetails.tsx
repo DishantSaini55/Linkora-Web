@@ -18,7 +18,7 @@ import {
 } from "@/lib/react-query/queries";
 import { multiFormatDateString } from "@/lib/utils";
 import { useUserContext } from "@/context/AuthContext";
-import { getFilePreview } from "@/lib/appwrite/api";
+import { getPostImageUrl } from "@/lib/appwrite/api";
 import { useToast } from "@/components/ui/use-toast";
 
 const PostDetails = () => {
@@ -218,11 +218,19 @@ const PostDetails = () => {
       ) : (
         <div className="post_details-card">
           <img
-            src={
-              post?.imageId
-                ? getFilePreview(post.imageId).toString()
-                : post?.imageUrl
-            }
+            src={post ? getPostImageUrl(post) : undefined}
+            onError={(event) => {
+              if (
+                post &&
+                typeof post.imageUrl === "string" &&
+                event.currentTarget.src !== post.imageUrl
+              ) {
+                event.currentTarget.src = post.imageUrl;
+                return;
+              }
+              event.currentTarget.src =
+                "/assets/icons/profile-placeholder.svg";
+            }}
             alt="creator"
             className="post_details-img"
           />
