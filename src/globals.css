@@ -89,6 +89,24 @@
     @apply text-[11px] font-semibold tracking-[0.2em] text-primary-500;
   }
 
+  .settings-card {
+    @apply w-full max-w-5xl rounded-2xl p-5 md:p-7;
+    background: rgba(20, 20, 27, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .settings-row {
+    @apply flex items-center justify-between gap-4 border-b border-white/10 py-4 last:border-0;
+  }
+
+  .settings-row span {
+    @apply flex flex-col gap-1;
+  }
+
+  .settings-row small {
+    @apply text-sm text-light-3;
+  }
+
   /* UTILITIES */
   .invert-white {
     @apply invert brightness-0 transition;

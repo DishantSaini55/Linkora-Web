@@ -7,6 +7,8 @@ import {
   useCreateNotification,
   useDeleteFollow,
   useGetFollowRelationship,
+  useSetSafetyRelationship,
+  useGetSafetyRelationships,
 } from "@/lib/react-query/queries";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -17,7 +19,6 @@ import {
   toggleBlockedUser,
   toggleMutedUser,
 } from "@/lib/clientPreferences";
-
 type UserCardProps = {
   user: Models.Document;
 };
@@ -31,6 +32,10 @@ const UserCard = ({ user }: UserCardProps) => {
   );
   const { mutate: createFollow, isLoading: isCreating } = useCreateFollow();
   const { mutate: createNotification } = useCreateNotification();
+  const { data: safetyRelationships = [] } = useGetSafetyRelationships(
+    currentUser.id
+  );
+  const { mutate: updateSafety } = useSetSafetyRelationship();
   const { mutate: deleteFollow, isLoading: isDeleting } = useDeleteFollow();
   const isFollowing = !!follow;
   const isBusy = isCreating || isDeleting;
@@ -97,6 +102,17 @@ const UserCard = ({ user }: UserCardProps) => {
       toggleMutedUser(user.$id);
       setMuted((current) => !current);
     }
+    const type = preference === "block" ? "block" : "mute";
+    const existing = safetyRelationships.find(
+      (relationship) =>
+        relationship.target === user.$id && relationship.type === type
+    );
+    updateSafety({
+      owner: currentUser.id,
+      target: user.$id,
+      type,
+      existingId: existing?.$id,
+    });
   };
 
   return (

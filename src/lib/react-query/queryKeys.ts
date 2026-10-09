@@ -22,4 +22,6 @@ export enum QUERY_KEYS {
   GET_FOLLOW_COUNTS = "getFollowCounts",
   GET_COMMENTS = "getComments",
   GET_UNREAD_NOTIFICATIONS = "getUnreadNotifications",
+  GET_SAFETY_RELATIONSHIPS = "getSafetyRelationships",
+  GET_DRAFTS = "getDrafts",
 }

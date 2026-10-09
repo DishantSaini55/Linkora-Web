@@ -78,7 +78,11 @@ const PostDetails = () => {
       {
         onSuccess: () => {
           setComment("");
-          if (post?.creator.accountId && post.creator.accountId !== user.accountId) {
+          if (
+            localStorage.getItem("linkora:notify-comments") !== "false" &&
+            post?.creator.accountId &&
+            post.creator.accountId !== user.accountId
+          ) {
             createNotification({
               recipient: post.creator.accountId,
               actor: user.accountId,
@@ -127,6 +131,29 @@ const PostDetails = () => {
     );
   };
 
+  const handleShare = async () => {
+    if (!post) return;
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: post.caption, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast({
+          title: "Link copied",
+          description: "The post link is ready to share.",
+        });
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast({
+        title: "Share failed",
+        description: "The post link could not be shared.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleUpdateComment = (commentId: string) => {
     const content = editingContent.trim();
     if (!content || isUpdatingComment) return;
@@ -170,6 +197,9 @@ const PostDetails = () => {
           disabled={isCreatingReport}
           className="text-light-3">
           Report
+        </Button>
+        <Button onClick={handleShare} variant="ghost" className="text-light-3">
+          Share
         </Button>
       </div>
 

@@ -11,6 +11,8 @@ import {
   isFollowsConfigured,
   isCommentsConfigured,
   isReportsConfigured,
+  isSafetyConfigured,
+  isDraftsConfigured,
 } from "./config";
 import { IUpdatePost, INewPost, INewUser, IUpdateUser } from "@/types";
 
@@ -588,6 +590,101 @@ export async function createReport(
     ID.unique(),
     { reporter, targetType, targetId, reason },
     [Permission.read(Role.user(reporter))]
+  );
+}
+
+export async function getReports() {
+  if (!isReportsConfigured) return [];
+  const result = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.reportsCollectionId,
+    [Query.orderDesc("$createdAt"), Query.limit(100)]
+  );
+  return result.documents;
+}
+
+export async function getSafetyRelationships(userId: string) {
+  if (!isSafetyConfigured) return [];
+  const result = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.safetyCollectionId,
+    [Query.equal("owner", userId), Query.limit(100)]
+  );
+  return result.documents;
+}
+
+export async function setSafetyRelationship(
+  owner: string,
+  target: string,
+  type: "block" | "mute",
+  existingId?: string
+) {
+  if (!isSafetyConfigured) {
+    throw new Error("Safety collection is not configured.");
+  }
+  if (existingId) {
+    return databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.safetyCollectionId,
+      existingId
+    );
+  }
+  return databases.createDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.safetyCollectionId,
+    ID.unique(),
+    { owner, target, type },
+    [Permission.read(Role.user(owner)), Permission.delete(Role.user(owner))]
+  );
+}
+
+export async function getDrafts(owner: string) {
+  if (!isDraftsConfigured) return [];
+  const result = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.draftsCollectionId,
+    [Query.equal("owner", owner), Query.orderDesc("$updatedAt"), Query.limit(20)]
+  );
+  return result.documents;
+}
+
+export async function saveDraft(
+  owner: string,
+  draft: { caption: string; location: string; tags: string },
+  draftId?: string
+) {
+  if (!isDraftsConfigured) {
+    throw new Error("Drafts collection is not configured.");
+  }
+  if (draftId) {
+    return databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.draftsCollectionId,
+      draftId,
+      draft
+    );
+  }
+  return databases.createDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.draftsCollectionId,
+    ID.unique(),
+    { owner, ...draft },
+    [
+      Permission.read(Role.user(owner)),
+      Permission.update(Role.user(owner)),
+      Permission.delete(Role.user(owner)),
+    ]
+  );
+}
+
+export async function deleteDraft(draftId: string) {
+  if (!isDraftsConfigured) {
+    throw new Error("Drafts collection is not configured.");
+  }
+  return databases.deleteDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.draftsCollectionId,
+    draftId
   );
 }
 

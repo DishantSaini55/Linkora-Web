@@ -20,7 +20,13 @@ import { PostValidation } from "@/lib/validation";
 import { useToast } from "@/components/ui/use-toast";
 import { useUserContext } from "@/context/AuthContext";
 import { FileUploader, Loader } from "@/components/shared";
-import { useCreatePost, useUpdatePost } from "@/lib/react-query/queries";
+import {
+  useCreatePost,
+  useUpdatePost,
+  useSaveDraft,
+  useGetDrafts,
+} from "@/lib/react-query/queries";
+import { isDraftsConfigured } from "@/lib/appwrite/config";
 
 type PostFormProps = {
   post?: Models.Document;
@@ -85,6 +91,51 @@ const PostForm = ({ post, action }: PostFormProps) => {
     useCreatePost();
   const { mutateAsync: updatePost, isLoading: isLoadingUpdate } =
     useUpdatePost();
+  const { mutateAsync: saveDraft, isLoading: isSavingDraft } = useSaveDraft();
+  const { data: cloudDrafts } = useGetDrafts(
+    action === "Create" && !post ? user.id : undefined
+  );
+
+  useEffect(() => {
+    const latestDraft = cloudDrafts?.[0];
+    if (
+      action === "Create" &&
+      !post &&
+      latestDraft &&
+      !form.formState.isDirty
+    ) {
+      form.reset({
+        caption: latestDraft.caption || "",
+        file: [],
+        location: latestDraft.location || "",
+        tags: latestDraft.tags || "",
+      });
+    }
+  }, [action, cloudDrafts, form, post]);
+
+  const handleSaveCloudDraft = async () => {
+    try {
+      await saveDraft({
+        owner: user.id,
+        draft: {
+          caption: form.getValues("caption"),
+          location: form.getValues("location"),
+          tags: form.getValues("tags"),
+        },
+      });
+      toast({
+        title: "Draft saved",
+        description: "Your draft is synced to Appwrite.",
+      });
+    } catch (error) {
+      toast({
+        title: "Cloud draft failed",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Handler
   const handleSubmit = async (value: z.infer<typeof PostValidation>) => {
@@ -220,6 +271,15 @@ const PostForm = ({ post, action }: PostFormProps) => {
               aria-label="Clear saved post draft"
               onClick={clearDraft}>
               Clear draft
+            </Button>
+          )}
+          {action === "Create" && isDraftsConfigured && (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isSavingDraft}
+              onClick={handleSaveCloudDraft}>
+              {isSavingDraft ? "Saving..." : "Save to cloud"}
             </Button>
           )}
           <Button

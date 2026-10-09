@@ -39,6 +39,12 @@ import {
   createReport,
   updateComment,
   deleteComment,
+  getSafetyRelationships,
+  setSafetyRelationship,
+  getDrafts,
+  saveDraft,
+  deleteDraft,
+  getReports,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -264,6 +270,75 @@ export const useCreateReport = () =>
       reason: string;
     }) => createReport(reporter, targetType, targetId, reason),
   });
+
+export const useGetReports = () =>
+  useQuery<Models.Document[]>({
+    queryKey: ["reports"],
+    queryFn: getReports,
+  });
+
+export const useGetSafetyRelationships = (owner?: string) =>
+  useQuery<Models.Document[]>({
+    queryKey: [QUERY_KEYS.GET_SAFETY_RELATIONSHIPS, owner],
+    queryFn: () => getSafetyRelationships(owner || ""),
+    enabled: !!owner,
+  });
+
+export const useSetSafetyRelationship = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      owner,
+      target,
+      type,
+      existingId,
+    }: {
+      owner: string;
+      target: string;
+      type: "block" | "mute";
+      existingId?: string;
+    }) => setSafetyRelationship(owner, target, type, existingId),
+    onSuccess: (_, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_SAFETY_RELATIONSHIPS, variables.owner],
+      }),
+  });
+};
+
+export const useGetDrafts = (owner?: string) =>
+  useQuery<Models.Document[]>({
+    queryKey: [QUERY_KEYS.GET_DRAFTS, owner],
+    queryFn: () => getDrafts(owner || ""),
+    enabled: !!owner,
+  });
+
+export const useSaveDraft = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      owner,
+      draft,
+      draftId,
+    }: {
+      owner: string;
+      draft: { caption: string; location: string; tags: string };
+      draftId?: string;
+    }) => saveDraft(owner, draft, draftId),
+    onSuccess: (_, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_DRAFTS, variables.owner],
+      }),
+  });
+};
+
+export const useDeleteDraft = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteDraft,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_DRAFTS] }),
+  });
+};
 
 export const useMarkNotificationsRead = () => {
   const queryClient = useQueryClient();

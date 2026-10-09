@@ -89,6 +89,8 @@ Populate `.env.local` with the public identifiers from your Appwrite project. Ne
 | `VITE_APPWRITE_FOLLOWS_COLLECTION_ID` | Follows table ID |
 | `VITE_APPWRITE_COMMENTS_COLLECTION_ID` | Comments table ID |
 | `VITE_APPWRITE_REPORTS_COLLECTION_ID` | Private Reports table ID |
+| `VITE_APPWRITE_SAFETY_COLLECTION_ID` | Block/mute relationships table ID |
+| `VITE_APPWRITE_DRAFTS_COLLECTION_ID` | Cloud post drafts table ID |
 
 Like/save notifications require the Appwrite Function in
 [`functions/create-notification`](./functions/create-notification). Configure
@@ -143,6 +145,16 @@ document permissions restrict follow deletion and comment editing/deletion to th
 relevant user. For Reports, enable authenticated Create only and configure
 document-level read permissions for the reporter. The notification type field
 must accept `like`, `save`, `follow`, and `comment`.
+
+Optional advanced tables:
+
+- **Safety**: `owner`, `target`, and `type` (`block` or `mute`). Enable
+  authenticated Create, private Read, and owner Delete.
+- **Drafts**: `owner`, `caption`, `location`, and `tags`. Enable authenticated
+  Create and private owner Read/Update/Delete.
+- **Moderation**: the `/moderation` page reads Reports using Appwrite table
+  permissions. Grant Read only to trusted moderator accounts; do not expose
+  Reports with public Read.
 
 ## Authentication
 

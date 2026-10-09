@@ -11,6 +11,8 @@ import {
   UpdateProfile,
   AllUsers,
   Notifications,
+  Settings,
+  Moderation,
 } from "@/_root/pages";
 import AuthLayout from "./_auth/AuthLayout";
 import RootLayout from "./_root/RootLayout";
@@ -57,6 +59,8 @@ const App = () => {
           <Route path="/posts/:id" element={<PostDetails />} />
           <Route path="/profile/:id/*" element={<Profile />} />
           <Route path="/update-profile/:id" element={<UpdateProfile />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/moderation" element={<Moderation />} />
         </Route>
       </Routes>
 

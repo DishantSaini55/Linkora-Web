@@ -9,3 +9,5 @@ export { default as PostDetails } from "./PostDetails";
 export { default as LikedPosts } from "./LikedPosts";
 export { default as AllUsers } from "./AllUsers";
 export { default as Notifications } from "./Notifications";
+export { default as Settings } from "./Settings";
+export { default as Moderation } from "./Moderation";

@@ -70,7 +70,12 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
       { postId: post.$id, likesArray },
       {
         onSuccess: () => {
-          if (creatorAccountId && actorAccountId && creatorAccountId !== actorAccountId) {
+          if (
+            localStorage.getItem("linkora:notify-likes") !== "false" &&
+            creatorAccountId &&
+            actorAccountId &&
+            creatorAccountId !== actorAccountId
+          ) {
             createNotification(
               {
                 recipient: creatorAccountId,
