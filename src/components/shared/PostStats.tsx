@@ -51,7 +51,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
   }, [currentUser]);
 
   const handleLikePost = (
-    e: React.MouseEvent<HTMLImageElement, MouseEvent>
+    e: React.SyntheticEvent<HTMLImageElement>
   ) => {
     e.stopPropagation();
     if (isLiking) return;
@@ -109,7 +109,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
   };
 
   const handleSavePost = (
-    e: React.MouseEvent<HTMLImageElement, MouseEvent>
+    e: React.SyntheticEvent<HTMLImageElement>
   ) => {
     e.stopPropagation();
     if (isSaving || isDeletingSave) return;
@@ -193,6 +193,15 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
           height={20}
           onClick={(e) => handleLikePost(e)}
           className={`cursor-pointer ${isLiking ? "opacity-50" : ""}`}
+          role="button"
+          tabIndex={0}
+          aria-label={checkIsLiked(likes, userId) ? "Unlike post" : "Like post"}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleLikePost(event);
+            }
+          }}
         />
         <p className="small-medium lg:base-medium">{likes.length}</p>
       </div>
@@ -205,7 +214,16 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
           height={20}
           className="cursor-pointer"
           aria-disabled={isSaving || isDeletingSave}
+          role="button"
+          tabIndex={0}
+          aria-label={isSaved ? "Remove post from saved items" : "Save post"}
           onClick={(e) => handleSavePost(e)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleSavePost(event);
+            }
+          }}
         />
       </div>
     </div>

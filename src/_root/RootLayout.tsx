@@ -4,6 +4,7 @@ import Topbar from "@/components/shared/Topbar";
 import Bottombar from "@/components/shared/Bottombar";
 import LeftSidebar from "@/components/shared/LeftSidebar";
 import Loader from "@/components/shared/Loader";
+import OfflineBanner from "@/components/shared/OfflineBanner";
 import { useUserContext } from "@/context/AuthContext";
 import { useRealtimePosts } from "@/hooks/useRealtimePosts";
 
@@ -21,6 +22,7 @@ const RootLayout = () => {
 
   return (
     <div className="app-shell w-full md:flex">
+      <OfflineBanner />
       <Topbar />
       <LeftSidebar />
 

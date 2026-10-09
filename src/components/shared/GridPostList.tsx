@@ -26,11 +26,13 @@ const GridPostList = ({
             <img
               src={
                 post.imageId
-                  ? getFilePreview(post.imageId).toString()
+                  ? getFilePreview(post.imageId, 900, 900).toString()
                   : post.imageUrl
               }
               alt="post"
               className="h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
           </Link>
 

@@ -3,6 +3,7 @@ import { Models } from "appwrite";
 // import { useToast } from "@/components/ui/use-toast";
 import { Loader, PostCard, UserCard } from "@/components/shared";
 import { useGetRecentPosts, useGetUsers } from "@/lib/react-query/queries";
+import { useClientPreferences } from "@/hooks/useClientPreferences";
 
 const Home = () => {
   // const { toast } = useToast();
@@ -19,6 +20,11 @@ const Home = () => {
     isError: isErrorCreators,
     refetch: refetchCreators,
   } = useGetUsers(10);
+  const { blockedUserIds, mutedUserIds } = useClientPreferences();
+  const hiddenUserIds = new Set([...blockedUserIds, ...mutedUserIds]);
+  const visiblePosts = posts?.documents.filter(
+    (post) => !hiddenUserIds.has(post.creator?.$id)
+  );
 
   if (isErrorPosts || isErrorCreators) {
     return (
@@ -64,13 +70,13 @@ const Home = () => {
           </div>
           {isPostLoading && !posts ? (
             <Loader />
-          ) : posts?.documents.length === 0 ? (
+          ) : visiblePosts?.length === 0 ? (
             <p className="text-light-4 mt-10 text-center">
               No posts yet. Create the first one!
             </p>
           ) : (
             <ul className="flex flex-col flex-1 gap-9 w-full ">
-              {posts?.documents.map((post: Models.Document) => (
+              {visiblePosts?.map((post: Models.Document) => (
                 <li key={post.$id} className="flex justify-center w-full">
                   <PostCard post={post} />
                 </li>

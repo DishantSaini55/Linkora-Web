@@ -6,6 +6,7 @@ import useDebounce from "@/hooks/useDebounce";
 import { GridPostList, Loader } from "@/components/shared";
 import { useGetPosts, useSearchPosts } from "@/lib/react-query/queries";
 import { Models } from "appwrite";
+import { useClientPreferences } from "@/hooks/useClientPreferences";
 
 export type SearchResultProps = {
   isSearchFetching: boolean;
@@ -45,6 +46,7 @@ const SearchResults = ({
 
 const Explore = () => {
   const { ref, inView } = useInView();
+  const { blockedUserIds, mutedUserIds } = useClientPreferences();
   const {
     data: posts,
     fetchNextPage,
@@ -92,15 +94,21 @@ const Explore = () => {
   }
 
   const shouldShowSearchResults = searchValue !== "";
+  const hiddenUserIds = new Set([...blockedUserIds, ...mutedUserIds]);
   const visiblePages =
     filter === "recent"
       ? posts.pages.map((page) => ({
           ...page,
-          documents: [...page.documents].sort((a, b) =>
-            b.$createdAt.localeCompare(a.$createdAt)
-          ),
+          documents: [...page.documents]
+            .filter((post) => !hiddenUserIds.has(post.creator?.$id))
+            .sort((a, b) => b.$createdAt.localeCompare(a.$createdAt)),
         }))
-      : posts.pages;
+      : posts.pages.map((page) => ({
+          ...page,
+          documents: page.documents.filter(
+            (post) => !hiddenUserIds.has(post.creator?.$id)
+          ),
+        }));
   const shouldShowPosts =
     !shouldShowSearchResults &&
     posts.pages.every((item) => item.documents.length === 0);

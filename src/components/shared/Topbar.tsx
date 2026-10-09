@@ -51,7 +51,10 @@ const Topbar = () => {
         </Link>
 
         <div className="flex gap-4">
-          <Link to="/notifications" className="relative flex-center">
+          <Link
+            to="/notifications"
+            className="relative flex-center"
+            aria-label="Notifications">
             <img src="/assets/icons/chat.svg" alt="notifications" />
             {unreadCount ? (
               <span className="absolute -right-2 -top-2 rounded-full bg-red-500 px-1.5 text-xs text-white">
@@ -62,10 +65,14 @@ const Topbar = () => {
           <Button
             variant="ghost"
             className="shad-button_ghost"
+            aria-label="Log out"
             onClick={handleSignOut}>
             <img src="/assets/icons/logout.svg" alt="logout" />
           </Button>
-          <Link to={`/profile/${user.id}`} className="flex-center gap-3">
+          <Link
+            to={`/profile/${user.id}`}
+            className="flex-center gap-3"
+            aria-label="Open your profile">
             <img
               src={user.imageUrl || "/assets/icons/profile-placeholder.svg"}
               alt="profile"

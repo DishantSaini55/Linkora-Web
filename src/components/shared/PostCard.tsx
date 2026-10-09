@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Models } from "appwrite";
 import { Link } from "react-router-dom";
 
@@ -26,7 +27,9 @@ const PostCard = ({ post }: PostCardProps) => {
                 "/assets/icons/profile-placeholder.svg"
               }
               alt="creator"
-              className="w-12 lg:h-12 rounded-full"
+              className="w-12 h-12 lg:h-12 rounded-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
           </Link>
 
@@ -62,22 +65,26 @@ const PostCard = ({ post }: PostCardProps) => {
         <div className="small-medium lg:base-medium py-5">
           <p>{post.caption}</p>
           <ul className="flex gap-1 mt-2">
-            {post.tags.map((tag: string, index: string) => (
+            {(Array.isArray(post.tags) ? post.tags : []).map(
+              (tag: string, index: number) => (
               <li key={`${tag}${index}`} className="text-light-3 small-regular">
                 #{tag}
               </li>
-            ))}
+              )
+            )}
           </ul>
         </div>
 
         <img
           src={
             post.imageId
-              ? getFilePreview(post.imageId).toString()
+              ? getFilePreview(post.imageId, 1200, 900).toString()
               : post.imageUrl || "/assets/icons/profile-placeholder.svg"
           }
           alt="post image"
           className="post-card_img"
+          loading="lazy"
+          decoding="async"
         />
       </Link>
 
@@ -86,4 +93,4 @@ const PostCard = ({ post }: PostCardProps) => {
   );
 };
 
-export default PostCard;
+export default memo(PostCard);

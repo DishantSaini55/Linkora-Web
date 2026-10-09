@@ -1,0 +1,16 @@
+{
+  "name": "Linkora",
+  "short_name": "Linkora",
+  "description": "Discover, share, and save the ideas that inspire you.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07070a",
+  "theme_color": "#877eff",
+  "icons": [
+    {
+      "src": "/assets/icons/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

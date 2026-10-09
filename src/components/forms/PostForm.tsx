@@ -2,6 +2,7 @@ import * as z from "zod";
 import { Models } from "appwrite";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
@@ -30,15 +31,54 @@ const PostForm = ({ post, action }: PostFormProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useUserContext();
+  const draftKey = `linkora:post-draft:${user.id}`;
+  const savedDraft = (() => {
+    if (action !== "Create" || post) return null;
+    try {
+      return JSON.parse(localStorage.getItem(draftKey) || "null");
+    } catch {
+      localStorage.removeItem(draftKey);
+      return null;
+    }
+  })();
   const form = useForm<z.infer<typeof PostValidation>>({
     resolver: zodResolver(PostValidation),
     defaultValues: {
-      caption: post ? post?.caption : "",
+      caption: post ? post?.caption : savedDraft?.caption || "",
       file: [],
-      location: post ? post.location : "",
-      tags: post ? post.tags.join(",") : "",
+      location: post ? post.location : savedDraft?.location || "",
+      tags: post
+        ? (Array.isArray(post.tags) ? post.tags : []).join(",")
+        : savedDraft?.tags || "",
     },
   });
+  const watchedValues = form.watch();
+
+  useEffect(() => {
+    if (action === "Create" && !post) {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({
+          caption: watchedValues.caption,
+          location: watchedValues.location,
+          tags: watchedValues.tags,
+        })
+      );
+    }
+  }, [
+    action,
+    draftKey,
+    post,
+    watchedValues.caption,
+    watchedValues.location,
+    watchedValues.tags,
+  ]);
+
+  const clearDraft = () => {
+    localStorage.removeItem(draftKey);
+    form.reset({ caption: "", file: [], location: "", tags: "" });
+    toast({ title: "Draft cleared" });
+  };
 
   // Query
   const { mutateAsync: createPost, isLoading: isLoadingCreate } =
@@ -82,6 +122,7 @@ const PostForm = ({ post, action }: PostFormProps) => {
       if (!newPost) throw new Error("Appwrite did not create the post.");
 
       navigate("/");
+      localStorage.removeItem(draftKey);
     } catch (error) {
       toast({
         title: "Create post failed",
@@ -172,6 +213,15 @@ const PostForm = ({ post, action }: PostFormProps) => {
             onClick={() => navigate(-1)}>
             Cancel
           </Button>
+          {action === "Create" && (
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label="Clear saved post draft"
+              onClick={clearDraft}>
+              Clear draft
+            </Button>
+          )}
           <Button
             type="submit"
             className="shad-button_primary whitespace-nowrap"
