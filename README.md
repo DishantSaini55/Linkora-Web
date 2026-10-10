@@ -179,10 +179,10 @@ must accept `like`, `save`, `follow`, and `comment`.
 
 Optional advanced tables:
 
-- **InteractionEvents**: `userAccountId`, `eventType`, `postId`, `creatorId`,
-  and `createdAt`. Enable authenticated Create and private owner Read. The
-  client records impressions and likes/saves when this optional table is
-  configured.
+- **InteractionEvents**: `userAccountId`, `eventType`, optional `postId`,
+  optional `targetId`, optional `creatorId`, and `createdAt`. Enable
+  authenticated Create and private owner Read. The client records impressions,
+  likes, saves, comments, and follows when this optional table is configured.
 
 - **Safety**: `owner`, `target`, and `type` (`block` or `mute`). Enable
   authenticated Create, private Read, and owner Delete.

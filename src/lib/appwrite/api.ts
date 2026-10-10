@@ -544,11 +544,12 @@ export async function getFollowingProfileIds(userId: string) {
 export async function createInteractionEvent(event: {
   userAccountId: string;
   eventType: "impression" | "like" | "save" | "comment" | "follow";
-  postId: string;
+  postId?: string;
+  targetId?: string;
   creatorId?: string;
 }) {
   if (!isInteractionEventsConfigured) return null;
-  if (!event.userAccountId || !event.postId) return null;
+  if (!event.userAccountId || (!event.postId && !event.targetId)) return null;
 
   return databases.createDocument(
     appwriteConfig.databaseId,
@@ -557,7 +558,8 @@ export async function createInteractionEvent(event: {
     {
       userAccountId: event.userAccountId,
       eventType: event.eventType,
-      postId: event.postId,
+      ...(event.postId ? { postId: event.postId } : {}),
+      ...(event.targetId ? { targetId: event.targetId } : {}),
       ...(event.creatorId ? { creatorId: event.creatorId } : {}),
       createdAt: new Date().toISOString(),
     },
