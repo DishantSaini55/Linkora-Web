@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { Models } from "appwrite";
 import { Link } from "react-router-dom";
 
@@ -6,6 +6,7 @@ import { PostStats } from "@/components/shared";
 import { multiFormatDateString } from "@/lib/utils";
 import { useUserContext } from "@/context/AuthContext";
 import { getPostImageUrl } from "@/lib/appwrite/api";
+import { useCreateInteractionEvent } from "@/lib/react-query/queries";
 
 type PostCardProps = {
   post: Models.Document;
@@ -13,8 +14,22 @@ type PostCardProps = {
 
 const PostCard = ({ post }: PostCardProps) => {
   const { user } = useUserContext();
+  const { mutate: recordEvent } = useCreateInteractionEvent();
   const fallbackImage =
     typeof post.imageUrl === "string" ? post.imageUrl : undefined;
+
+  useEffect(() => {
+    if (!user.accountId || !post.$id || !post.creator) return;
+    const storageKey = `linkora:impression:${user.accountId}:${post.$id}`;
+    if (sessionStorage.getItem(storageKey)) return;
+    sessionStorage.setItem(storageKey, "1");
+    recordEvent({
+      userAccountId: user.accountId,
+      eventType: "impression",
+      postId: post.$id,
+      creatorId: post.creator.$id,
+    });
+  }, [post.$id, post.creator, recordEvent, user.accountId]);
 
   if (!post.creator) return;
 

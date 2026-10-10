@@ -1,11 +1,21 @@
+import { useMemo, useState } from "react";
 import { Models } from "appwrite";
 
 // import { useToast } from "@/components/ui/use-toast";
 import { Loader, PostCard, UserCard } from "@/components/shared";
-import { useGetRecentPosts, useGetUsers } from "@/lib/react-query/queries";
+import {
+  useGetFollowingProfileIds,
+  useGetRecentPosts,
+  useGetUsers,
+} from "@/lib/react-query/queries";
+import { useUserContext } from "@/context/AuthContext";
 import { useClientPreferences } from "@/hooks/useClientPreferences";
 
 const Home = () => {
+  const { user } = useUserContext();
+  const [feedMode, setFeedMode] = useState<"latest" | "popular" | "following">(
+    "latest"
+  );
   // const { toast } = useToast();
 
   const {
@@ -21,10 +31,26 @@ const Home = () => {
     refetch: refetchCreators,
   } = useGetUsers(10);
   const { blockedUserIds, mutedUserIds } = useClientPreferences();
+  const { data: followingProfileIds = [] } = useGetFollowingProfileIds(user.id);
   const hiddenUserIds = new Set([...blockedUserIds, ...mutedUserIds]);
-  const visiblePosts = posts?.documents.filter(
-    (post) => !hiddenUserIds.has(post.creator?.$id)
-  );
+  const visiblePosts = useMemo(() => {
+    const filtered = (posts?.documents || []).filter(
+      (post) => !hiddenUserIds.has(post.creator?.$id)
+    );
+    if (feedMode === "following") {
+      return filtered.filter((post) =>
+        followingProfileIds.includes(post.creator?.$id)
+      );
+    }
+    if (feedMode === "popular") {
+      return [...filtered].sort(
+        (left, right) =>
+          (Array.isArray(right.likes) ? right.likes.length : 0) -
+          (Array.isArray(left.likes) ? left.likes.length : 0)
+      );
+    }
+    return filtered;
+  }, [feedMode, followingProfileIds, hiddenUserIds, posts?.documents]);
 
   if (isErrorPosts || isErrorCreators) {
     return (
@@ -67,6 +93,21 @@ const Home = () => {
             <p className="small-regular text-light-3 mt-2">
               Fresh ideas and creators, all in one place.
             </p>
+            <div className="flex gap-2 mt-4" role="group" aria-label="Feed mode">
+              {(["latest", "popular", "following"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setFeedMode(mode)}
+                  className={`small-semibold rounded-full px-4 py-2 ${
+                    feedMode === mode
+                      ? "bg-primary-500 text-white"
+                      : "bg-light-2 text-light-3"
+                  }`}>
+                  {mode[0].toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
           {isPostLoading && !posts ? (
             <Loader />

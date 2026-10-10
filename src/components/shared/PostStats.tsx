@@ -11,6 +11,7 @@ import {
   useDeleteSavedPost,
   useCreateNotification,
   useGetCurrentUser,
+  useCreateInteractionEvent,
 } from "@/lib/react-query/queries";
 import { useUserContext } from "@/context/AuthContext";
 
@@ -36,6 +37,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
   const { mutate: deleteSavePost, isLoading: isDeletingSave } =
     useDeleteSavedPost();
   const { mutate: createNotification } = useCreateNotification();
+  const { mutate: recordEvent } = useCreateInteractionEvent();
 
   const { data: currentUser } = useGetCurrentUser();
 
@@ -71,6 +73,14 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
       { postId: post.$id, likesArray },
       {
         onSuccess: () => {
+          if (actorAccountId && likesArray.includes(userId)) {
+            recordEvent({
+              userAccountId: actorAccountId,
+              eventType: "like",
+              postId: post.$id,
+              creatorId: post.creator?.$id,
+            });
+          }
           if (
             localStorage.getItem("linkora:notify-likes") !== "false" &&
             creatorAccountId &&
@@ -150,6 +160,14 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
       { userId, postId: post.$id },
       {
         onSuccess: () => {
+          if (actorAccountId) {
+            recordEvent({
+              userAccountId: actorAccountId,
+              eventType: "save",
+              postId: post.$id,
+              creatorId: post.creator?.$id,
+            });
+          }
           if (
             localStorage.getItem("linkora:notify-saves") !== "false" &&
             creatorAccountId &&
