@@ -9,3 +9,5 @@ export { default as UserCard } from "./UserCard";
 export { default as FileUploader } from "./FileUploader";
 export { default as ProfileUploader } from "./ProfileUploader";
 export { default as PostStats } from "./PostStats";
+export { default as StoriesTray } from "./StoriesTray";
+export { default as StoriesViewer } from "./StoriesViewer";

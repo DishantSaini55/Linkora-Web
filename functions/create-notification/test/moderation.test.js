@@ -24,6 +24,7 @@ const originalEnvironment = {
   postCollectionId: process.env.APPWRITE_POST_COLLECTION_ID,
   storiesCollectionId: process.env.APPWRITE_STORIES_COLLECTION_ID,
   storySegmentsCollectionId: process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID,
+  storyViewsCollectionId: process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID,
   storageId: process.env.APPWRITE_STORAGE_ID,
   safetyCollectionId: process.env.APPWRITE_SAFETY_COLLECTION_ID,
 };
@@ -86,6 +87,12 @@ afterEach(() => {
   } else {
     process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID =
       originalEnvironment.storySegmentsCollectionId;
+  }
+  if (originalEnvironment.storyViewsCollectionId === undefined) {
+    delete process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID;
+  } else {
+    process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID =
+      originalEnvironment.storyViewsCollectionId;
   }
   if (originalEnvironment.storageId === undefined) {
     delete process.env.APPWRITE_STORAGE_ID;
@@ -402,6 +409,98 @@ test("rejects Story media without authenticated ownership", async () => {
 
   assert.equal(result.status, 403);
   assert.equal(result.body.code, "STORY_FILE_NOT_OWNED");
+});
+
+test("lists only active public and own Stories with ordered segments", async () => {
+  process.env.APPWRITE_STORIES_COLLECTION_ID = "stories";
+  process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID = "story-segments";
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("/collections/stories/documents")) {
+      return new Response(
+        JSON.stringify({
+          documents: [
+            {
+              $id: "public-story",
+              owner: "another-user",
+              privacy: "public",
+              status: "published",
+            },
+            {
+              $id: "followers-story",
+              owner: "another-user",
+              privacy: "followers",
+              status: "published",
+            },
+            {
+              $id: "own-story",
+              owner: "user-1",
+              privacy: "followers",
+              status: "published",
+            },
+          ],
+        }),
+        { status: 200 }
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        documents: [
+          { $id: "segment-2", storyId: "public-story", order: 1 },
+          { $id: "segment-1", storyId: "public-story", order: 0 },
+        ],
+      }),
+      { status: 200 }
+    );
+  };
+
+  const result = await invokeFunction({ action: "list-stories" });
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.body.stories.map((story) => story.$id),
+    ["public-story", "own-story"]
+  );
+  assert.deepEqual(
+    result.body.stories[0].segments.map((segment) => segment.$id),
+    ["segment-1", "segment-2"]
+  );
+});
+
+test("deduplicates Story view records", async () => {
+  process.env.APPWRITE_STORIES_COLLECTION_ID = "stories";
+  process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID = "story-views";
+  let created = false;
+  globalThis.fetch = async (url, options = {}) => {
+    if (String(url).includes("/collections/stories/documents/story-1")) {
+      return new Response(
+        JSON.stringify({
+          $id: "story-1",
+          owner: "another-user",
+          privacy: "public",
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        }),
+        { status: 200 }
+      );
+    }
+    if (String(url).includes("/collections/story-views/documents?")) {
+      return new Response(
+        JSON.stringify({ documents: created ? [] : [{ $id: "view-1" }] }),
+        { status: 200 }
+      );
+    }
+    if (options.method === "POST") created = true;
+    return new Response(JSON.stringify({ $id: "view-2" }), { status: 201 });
+  };
+
+  const result = await invokeFunction({
+    action: "mark-story-viewed",
+    storyId: "story-1",
+    segmentId: "segment-1",
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.viewed, false);
+  assert.equal(created, false);
 });
 
 test("rejects moderator report actions without report configuration", async () => {

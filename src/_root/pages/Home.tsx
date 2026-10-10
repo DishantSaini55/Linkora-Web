@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 import { Models } from "appwrite";
 
 // import { useToast } from "@/components/ui/use-toast";
-import { Loader, PostCard, UserCard } from "@/components/shared";
+import { Loader, PostCard, StoriesTray, UserCard } from "@/components/shared";
 import {
   useGetFollowingProfileIds,
   useGetRecentPosts,
+  useGetStories,
   useGetUsers,
 } from "@/lib/react-query/queries";
 import { useUserContext } from "@/context/AuthContext";
@@ -32,6 +33,7 @@ const Home = () => {
   } = useGetUsers(10);
   const { blockedUserIds, mutedUserIds } = useClientPreferences();
   const { data: followingProfileIds = [] } = useGetFollowingProfileIds(user.id);
+  const { data: stories = [] } = useGetStories(Boolean(user.accountId));
   const hiddenUserIds = new Set([...blockedUserIds, ...mutedUserIds]);
   const visiblePosts = useMemo(() => {
     const filtered = (posts?.documents || []).filter(
@@ -109,6 +111,7 @@ const Home = () => {
               ))}
             </div>
           </div>
+          {stories.length > 0 && <StoriesTray stories={stories} />}
           {isPostLoading && !posts ? (
             <Loader />
           ) : visiblePosts?.length === 0 ? (

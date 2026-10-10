@@ -555,6 +555,123 @@ export default async ({ req, res, error }) => {
         }
         return res.json({ story, segments: createdSegments });
       }
+    if (body.action === "list-stories") {
+      if (
+        !process.env.APPWRITE_STORIES_COLLECTION_ID ||
+        !process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID
+      ) {
+        throw new Error(
+          "Stories collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_SEGMENTS_COLLECTION_ID."
+        );
+      }
+      const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
+      const activeQuery = encodeURIComponent(
+        JSON.stringify({
+          method: "equal",
+          attribute: "status",
+          values: ["published"],
+        })
+      );
+      const expiryQuery = encodeURIComponent(
+        JSON.stringify({
+          method: "greaterThan",
+          attribute: "expiresAt",
+          values: [new Date().toISOString()],
+        })
+      );
+      const result = await appwriteRequest(
+        `${databasePath}/collections/${process.env.APPWRITE_STORIES_COLLECTION_ID}` +
+          `/documents?queries[]=${activeQuery}&queries[]=${expiryQuery}&limit=100`
+      );
+      const visibleStories = (result.documents || []).filter(
+        (story) => story.owner === actor || story.privacy === "public"
+      );
+      const stories = await Promise.all(
+        visibleStories.map(async (story) => {
+          const storyQuery = encodeURIComponent(
+            JSON.stringify({
+              method: "equal",
+              attribute: "storyId",
+              values: [story.$id],
+            })
+          );
+          const segments = await appwriteRequest(
+            `${databasePath}/collections/${process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID}` +
+              `/documents?queries[]=${storyQuery}&limit=10`
+          );
+          return {
+            ...story,
+            segments: Array.isArray(segments.documents)
+              ? segments.documents.sort((left, right) => left.order - right.order)
+              : [],
+          };
+        })
+      );
+      return res.json({ stories });
+    }
+    if (body.action === "mark-story-viewed") {
+      if (
+        !process.env.APPWRITE_STORIES_COLLECTION_ID ||
+        !process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID
+      ) {
+        throw new Error(
+          "Story view collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_VIEWS_COLLECTION_ID."
+        );
+      }
+      if (
+        typeof body.storyId !== "string" ||
+        typeof body.segmentId !== "string"
+      ) {
+        return res.json({ message: "A Story and segment ID are required." }, 400);
+      }
+      const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
+      const story = await appwriteRequest(
+        `${databasePath}/collections/${process.env.APPWRITE_STORIES_COLLECTION_ID}` +
+          `/documents/${encodeURIComponent(body.storyId)}`
+      );
+      if (
+        story.owner !== actor &&
+        (story.privacy !== "public" ||
+          new Date(story.expiresAt).getTime() <= Date.now())
+      ) {
+        return res.json({ message: "This Story is not available." }, 403);
+      }
+      const viewQuery = [
+        ["storyId", body.storyId],
+        ["segmentId", body.segmentId],
+        ["viewerAccountId", actor],
+      ]
+        .map(([attribute, value]) =>
+          `queries[]=${encodeURIComponent(
+            JSON.stringify({ method: "equal", attribute, values: [value] })
+          )}`
+        )
+        .join("&");
+      const existingView = await appwriteRequest(
+        `${databasePath}/collections/${process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID}` +
+          `/documents?${viewQuery}&limit=1`
+      );
+      if (existingView.documents?.length) {
+        return res.json({ viewed: false });
+      }
+      await appwriteRequest(
+        `${databasePath}/collections/${process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID}/documents`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            documentId: "unique()",
+            data: {
+              storyId: body.storyId,
+              segmentId: body.segmentId,
+              viewerAccountId: actor,
+              viewedAt: new Date().toISOString(),
+            },
+            permissions: [`read("user:${actor}")`],
+          }),
+        }
+      );
+      return res.json({ viewed: true });
+    }
     if (body.action === "create-report") {
       if (!process.env.APPWRITE_REPORTS_COLLECTION_ID) {
         throw new Error(
@@ -1254,6 +1371,8 @@ export default async ({ req, res, error }) => {
           action === "update-report" ||
           action === "delete-content" ||
           action === "create-story" ||
+          action === "list-stories" ||
+          action === "mark-story-viewed" ||
           action === ""
             ? message
             : "Notification creation failed.",

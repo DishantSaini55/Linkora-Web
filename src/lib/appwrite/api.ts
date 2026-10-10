@@ -825,6 +825,52 @@ export async function createStory(story: INewStory) {
   );
 }
 
+export type StoryWithSegments = Models.Document & {
+  segments: Models.Document[];
+};
+
+async function executeStoriesAction(
+  payload: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  if (!isStoriesConfigured) {
+    throw new Error("Stories are not configured.");
+  }
+  const execution = await functions.createExecution(
+    appwriteConfig.storiesFunctionId,
+    JSON.stringify(payload),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
+  );
+  const responseBody = JSON.parse(execution.responseBody || "{}");
+  if (
+    execution.status === "failed" ||
+    execution.responseStatusCode < 200 ||
+    execution.responseStatusCode >= 300
+  ) {
+    throw new Error(
+      typeof responseBody.message === "string"
+        ? responseBody.message
+        : "Story action failed."
+    );
+  }
+  return responseBody;
+}
+
+export async function getStories() {
+  const result = await executeStoriesAction({ action: "list-stories" });
+  return Array.isArray(result.stories) ? (result.stories as StoryWithSegments[]) : [];
+}
+
+export async function markStoryViewed(storyId: string, segmentId: string) {
+  return executeStoriesAction({
+    action: "mark-story-viewed",
+    storyId,
+    segmentId,
+  });
+}
+
 async function resolveReportTarget(
   targetType: "post" | "comment",
   targetId: string

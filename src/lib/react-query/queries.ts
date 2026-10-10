@@ -59,6 +59,8 @@ import {
   updateMessage,
   deleteMessage,
   generateAiContent,
+  getStories,
+  markStoryViewed,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -302,6 +304,29 @@ export const useGetNotifications = (recipient?: string) => {
     queryKey: [QUERY_KEYS.GET_NOTIFICATIONS, recipient],
     queryFn: () => getNotifications(recipient || ""),
     enabled: !!recipient,
+  });
+};
+
+export const useGetStories = (enabled = true) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_STORIES],
+    queryFn: getStories,
+    enabled,
+    staleTime: 30_000,
+  });
+
+export const useMarkStoryViewed = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      storyId,
+      segmentId,
+    }: {
+      storyId: string;
+      segmentId: string;
+    }) => markStoryViewed(storyId, segmentId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_STORIES] }),
   });
 };
 

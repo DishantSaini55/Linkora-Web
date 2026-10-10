@@ -29,4 +29,5 @@ export enum QUERY_KEYS {
   GET_PREFERENCES = "getPreferences",
   GET_MESSAGES = "getMessages",
   GET_UNREAD_MESSAGES = "getUnreadMessages",
+  GET_STORIES = "getStories",
 }

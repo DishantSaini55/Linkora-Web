@@ -85,6 +85,12 @@ video segments are limited to 60 seconds, and expiration is calculated
 server-side for a maximum of 24 hours. Failed segment creation rolls back the
 partially created Story records.
 
+The `list-stories` action returns non-expired public Stories and the
+authenticated user's own Stories. `followers` Stories are intentionally
+excluded until follow-relationship authorization is enabled. The
+`mark-story-viewed` action deduplicates view records per viewer, Story, and
+segment.
+
 Message creation and editing use the same moderation rules. Blocked messages
 return HTTP 422 with code `MESSAGE_MODERATION_BLOCKED`.
 
