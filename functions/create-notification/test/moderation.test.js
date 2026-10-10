@@ -16,6 +16,7 @@ const originalEnvironment = {
   blockedTerms: process.env.BLOCKED_COMMENT_TERMS,
   moderatorIds: process.env.MODERATOR_ACCOUNT_IDS,
   moderatorId: process.env.MODERATOR_ACCOUNT_ID,
+  rateLimitCommentMax: process.env.RATE_LIMIT_COMMENT_MAX,
 };
 const originalFetch = globalThis.fetch;
 
@@ -35,6 +36,11 @@ afterEach(() => {
     delete process.env.MODERATOR_ACCOUNT_ID;
   } else {
     process.env.MODERATOR_ACCOUNT_ID = originalEnvironment.moderatorId;
+  }
+  if (originalEnvironment.rateLimitCommentMax === undefined) {
+    delete process.env.RATE_LIMIT_COMMENT_MAX;
+  } else {
+    process.env.RATE_LIMIT_COMMENT_MAX = originalEnvironment.rateLimitCommentMax;
   }
 });
 
@@ -254,6 +260,29 @@ test("rejects a non-owner without moderator access", async () => {
 
   assert.equal(result.status, 403);
   assert.match(result.body.message, /comment author or a moderator/);
+});
+
+test("rate-limits comment creation per authenticated actor", async () => {
+  process.env.RATE_LIMIT_COMMENT_MAX = "1";
+  const originalFetchHandler = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ $id: "comment-1" }), { status: 201 });
+
+  const payload = {
+    action: "create-comment",
+    postId: "post-rate-limit",
+    authorId: "profile-1",
+    authorAccountId: "rate-limit-user",
+    content: "Hello",
+  };
+  const first = await invokeFunction(payload, "rate-limit-user");
+  const second = await invokeFunction(payload, "rate-limit-user");
+
+  globalThis.fetch = originalFetchHandler;
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 429);
+  assert.equal(second.body.code, "RATE_LIMITED");
+  assert.equal(second.body.retryAfterSeconds >= 1, true);
 });
 
 test("sends a message with the authenticated actor as sender", async () => {

@@ -15,6 +15,7 @@ const usersCollectionId =
   process.env.APPWRITE_USER_COLLECTION_ID ||
   process.env.APPWRITE_USERS_COLLECTION_ID ||
   process.env.USERS_COLLECTION_ID;
+const rateLimitBuckets = new Map();
 const toxicCommentPatterns = [
   /\b(?:kill\s+yourself|kys)\b/i,
   /\b(?:go\s+die|drop\s+dead)\b/i,
@@ -91,6 +92,54 @@ function isModerator(accountId) {
     .map((value) => value.trim())
     .filter(Boolean)
     .includes(accountId);
+}
+
+function getRateLimitConfig(action) {
+  const defaults = {
+    ai: 10,
+    comment: 30,
+    message: 60,
+  };
+  const variable =
+    action === "ai"
+      ? "RATE_LIMIT_AI_MAX"
+      : action === "comment"
+        ? "RATE_LIMIT_COMMENT_MAX"
+        : "RATE_LIMIT_MESSAGE_MAX";
+  const configured = Number.parseInt(process.env[variable] || "", 10);
+  const maximum = Number.isFinite(configured) && configured > 0
+    ? configured
+    : defaults[action];
+  const configuredWindow = Number.parseInt(
+    process.env.RATE_LIMIT_WINDOW_MS || "",
+    10
+  );
+  const windowMs =
+    Number.isFinite(configuredWindow) && configuredWindow >= 1000
+      ? configuredWindow
+      : 60_000;
+  return { maximum, windowMs };
+}
+
+function checkRateLimit(actor, action, now = Date.now()) {
+  const { maximum, windowMs } = getRateLimitConfig(action);
+  const key = `${action}:${actor}`;
+  const current = rateLimitBuckets.get(key);
+  if (!current || now - current.startedAt >= windowMs) {
+    rateLimitBuckets.set(key, { startedAt: now, count: 1 });
+    return null;
+  }
+
+  if (current.count >= maximum) {
+    return Math.max(1, Math.ceil((windowMs - (now - current.startedAt)) / 1000));
+  }
+
+  current.count += 1;
+  return null;
+}
+
+function clearRateLimitState() {
+  rateLimitBuckets.clear();
 }
 
 async function appwriteRequest(path, options = {}) {
@@ -379,6 +428,17 @@ export default async ({ req, res, error }) => {
       ) {
         return res.json({ message: "Invalid AI generation request." }, 400);
       }
+      const retryAfterSeconds = checkRateLimit(actor, "ai");
+      if (retryAfterSeconds) {
+        return res.json(
+          {
+            code: "RATE_LIMITED",
+            message: "AI generation rate limit exceeded. Please try again later.",
+            retryAfterSeconds,
+          },
+          429
+        );
+      }
       return res.json(
         await generateWithAi({
           topic: body.topic.trim(),
@@ -406,6 +466,17 @@ export default async ({ req, res, error }) => {
         return res.json(
           { code: "COMMENT_MODERATION_BLOCKED", message: moderationReason },
           422
+        );
+      }
+      const retryAfterSeconds = checkRateLimit(actor, "comment");
+      if (retryAfterSeconds) {
+        return res.json(
+          {
+            code: "RATE_LIMITED",
+            message: "Comment rate limit exceeded. Please try again later.",
+            retryAfterSeconds,
+          },
+          429
         );
       }
       if (!commentsCollectionId) {
@@ -542,6 +613,17 @@ export default async ({ req, res, error }) => {
 
       if (!content.trim() && !body.attachmentId) {
         return res.json({ message: "Message text or an attachment is required." }, 400);
+      }
+      const retryAfterSeconds = checkRateLimit(actor, "message");
+      if (retryAfterSeconds) {
+        return res.json(
+          {
+            code: "RATE_LIMITED",
+            message: "Message rate limit exceeded. Please try again later.",
+            retryAfterSeconds,
+          },
+          429
+        );
       }
       if (!process.env.APPWRITE_MESSAGES_COLLECTION_ID) {
         throw new Error(
@@ -773,4 +855,10 @@ export default async ({ req, res, error }) => {
   }
 };
 
-export { getToxicCommentReason, isModerator, normalizeCommentText };
+export {
+  checkRateLimit,
+  clearRateLimitState,
+  getToxicCommentReason,
+  isModerator,
+  normalizeCommentText,
+};

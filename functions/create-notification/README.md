@@ -37,6 +37,10 @@ Add these variables to the Function's environment:
 - `BLOCKED_COMMENT_TERMS`: optional comma-separated extra words or phrases to
   block in comments. Terms are normalized before matching, so basic
   punctuation and common character substitutions are handled.
+- `RATE_LIMIT_AI_MAX`: optional AI requests per actor per window (default `10`)
+- `RATE_LIMIT_COMMENT_MAX`: optional comment requests per actor per window (default `30`)
+- `RATE_LIMIT_MESSAGE_MAX`: optional message requests per actor per window (default `60`)
+- `RATE_LIMIT_WINDOW_MS`: optional rate-limit window in milliseconds (default `60000`)
 
 Allow authenticated users to execute the Function, but do not expose the API
 key in the frontend. Set `VITE_APPWRITE_NOTIFICATION_FUNCTION_ID` in the
@@ -55,3 +59,8 @@ The `create-comment` and `update-comment` actions perform server-side comment
 moderation before creating or updating a comment. The Function API key needs
 Comments create/update access and Users read access. Blocked comments return
 HTTP 422 with code `COMMENT_MODERATION_BLOCKED`.
+
+AI generation, comment creation, and message sending return HTTP 429 with code
+`RATE_LIMITED` when an actor exceeds its configured limit. Limits are enforced
+per Function instance; use a shared Appwrite-backed counter or gateway limit
+when strict global limits across multiple Function instances are required.
