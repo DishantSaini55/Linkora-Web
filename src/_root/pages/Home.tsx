@@ -11,6 +11,7 @@ import {
 } from "@/lib/react-query/queries";
 import { useUserContext } from "@/context/AuthContext";
 import { useClientPreferences } from "@/hooks/useClientPreferences";
+import { isStoriesConfigured } from "@/lib/appwrite/config";
 
 const Home = () => {
   const { user } = useUserContext();
@@ -111,7 +112,7 @@ const Home = () => {
               ))}
             </div>
           </div>
-          {stories.length > 0 && <StoriesTray stories={stories} />}
+          {isStoriesConfigured && <StoriesTray stories={stories} />}
           {isPostLoading && !posts ? (
             <Loader />
           ) : visiblePosts?.length === 0 ? (
