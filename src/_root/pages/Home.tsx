@@ -34,7 +34,9 @@ const Home = () => {
   } = useGetUsers(10);
   const { blockedUserIds, mutedUserIds } = useClientPreferences();
   const { data: followingProfileIds = [] } = useGetFollowingProfileIds(user.id);
-  const { data: stories = [] } = useGetStories(Boolean(user.accountId));
+  const { data: stories = [] } = useGetStories(
+    isStoriesConfigured && Boolean(user.accountId)
+  );
   const hiddenUserIds = new Set([...blockedUserIds, ...mutedUserIds]);
   const visiblePosts = useMemo(() => {
     const filtered = (posts?.documents || []).filter(
@@ -112,7 +114,7 @@ const Home = () => {
               ))}
             </div>
           </div>
-          {isStoriesConfigured && <StoriesTray stories={stories} />}
+          <StoriesTray stories={stories} />
           {isPostLoading && !posts ? (
             <Loader />
           ) : visiblePosts?.length === 0 ? (

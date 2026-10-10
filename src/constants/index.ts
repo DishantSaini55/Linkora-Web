@@ -36,6 +36,11 @@ export const sidebarLinks = [
   },
   {
     imgURL: "/assets/icons/gallery-add.svg",
+    route: "/create-story",
+    label: "Create Story",
+  },
+  {
+    imgURL: "/assets/icons/gallery-add.svg",
     route: "/drafts",
     label: "Drafts",
   },
