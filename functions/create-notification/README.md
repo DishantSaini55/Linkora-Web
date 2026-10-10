@@ -66,6 +66,9 @@ moderation before creating or updating a comment. The Function API key needs
 Comments create/update access and Users read access. Blocked comments return
 HTTP 422 with code `COMMENT_MODERATION_BLOCKED`.
 
+Message creation and editing use the same moderation rules. Blocked messages
+return HTTP 422 with code `MESSAGE_MODERATION_BLOCKED`.
+
 AI generation, comment creation, and message sending return HTTP 429 with code
 `RATE_LIMITED` when an actor exceeds its configured limit. Limits are enforced
 per Function instance; use a shared Appwrite-backed counter or gateway limit

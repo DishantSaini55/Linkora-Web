@@ -148,6 +148,26 @@ test("rejects toxic comments at the request boundary", async () => {
   assert.equal(result.body.code, "COMMENT_MODERATION_BLOCKED");
 });
 
+test("rejects abusive messages before Appwrite", async () => {
+  let requestCount = 0;
+  globalThis.fetch = async () => {
+    requestCount += 1;
+    return new Response(JSON.stringify({ $id: "unexpected" }), { status: 201 });
+  };
+
+  const result = await invokeFunction({
+    action: "send-message",
+    recipient: "user-2",
+    recipientProfileId: "profile-2",
+    senderProfileId: "profile-1",
+    content: "go die",
+  });
+
+  assert.equal(result.status, 422);
+  assert.equal(result.body.code, "MESSAGE_MODERATION_BLOCKED");
+  assert.equal(requestCount, 0);
+});
+
 test("rejects notification actor spoofing", async () => {
   const result = await invokeFunction(
     {
@@ -478,6 +498,23 @@ test("rejects editing a message owned by another account", async () => {
 
   assert.equal(result.status, 403);
   assert.equal(result.body.message, "Only the sender can modify this message.");
+});
+
+test("rejects abusive message edits after sender authorization", async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ senderAccountId: "user-1" }), { status: 200 });
+
+  const result = await invokeFunction(
+    {
+      action: "edit-message",
+      messageId: "message-1",
+      content: "You are an idiot",
+    },
+    "user-1"
+  );
+
+  assert.equal(result.status, 422);
+  assert.equal(result.body.code, "MESSAGE_MODERATION_BLOCKED");
 });
 
 test("allows the message sender to delete their message", async () => {

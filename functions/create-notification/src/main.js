@@ -657,6 +657,18 @@ export default async ({ req, res, error }) => {
       if (!content.trim() && !body.attachmentId) {
         return res.json({ message: "Message text or an attachment is required." }, 400);
       }
+      const messageModerationReason = content.trim()
+        ? getToxicCommentReason(content)
+        : null;
+      if (messageModerationReason) {
+        return res.json(
+          {
+            code: "MESSAGE_MODERATION_BLOCKED",
+            message: "This message contains abusive or hateful language.",
+          },
+          422
+        );
+      }
       if (
         body.attachmentId !== undefined &&
         !isValidAttachment(body.attachmentId, body.attachmentUrl)
@@ -807,6 +819,15 @@ export default async ({ req, res, error }) => {
       }
       if (typeof body.content !== "string" || !body.content.trim()) {
         return res.json({ message: "Message content is required." }, 400);
+      }
+      if (getToxicCommentReason(body.content)) {
+        return res.json(
+          {
+            code: "MESSAGE_MODERATION_BLOCKED",
+            message: "This message contains abusive or hateful language.",
+          },
+          422
+        );
       }
       return res.json(
         await appwriteRequest(path, {
