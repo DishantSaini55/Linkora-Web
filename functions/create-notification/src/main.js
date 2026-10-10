@@ -410,9 +410,37 @@ export default async ({ req, res, error }) => {
         );
       }
       const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
+      const reportCollectionPath =
+        `${databasePath}/collections/${process.env.APPWRITE_REPORTS_COLLECTION_ID}`;
+      const duplicateQueries = [
+        ["reporter", actor],
+        ["targetType", body.targetType],
+        ["targetId", body.targetId.trim()],
+      ]
+        .map(([attribute, value]) =>
+          `queries[]=${encodeURIComponent(
+            JSON.stringify({ method: "equal", attribute, values: [value] })
+          )}`
+        )
+        .join("&");
+      const existingReports = await appwriteRequest(
+        `${reportCollectionPath}/documents?${duplicateQueries}&limit=1`
+      );
+      if (
+        Array.isArray(existingReports.documents) &&
+        existingReports.documents.length > 0
+      ) {
+        return res.json(
+          {
+            code: "REPORT_ALREADY_EXISTS",
+            message: "You have already reported this content.",
+          },
+          409
+        );
+      }
       return res.json(
         await appwriteRequest(
-          `${databasePath}/collections/${process.env.APPWRITE_REPORTS_COLLECTION_ID}/documents`,
+          `${reportCollectionPath}/documents`,
           {
             method: "POST",
             body: JSON.stringify({

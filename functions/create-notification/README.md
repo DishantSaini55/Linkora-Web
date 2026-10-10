@@ -69,7 +69,8 @@ HTTP 422 with code `COMMENT_MODERATION_BLOCKED`.
 
 Report creation also goes through the Function. The authenticated actor must
 match the reporter field, and reports are created with private reporter read
-permissions.
+permissions. A user can submit at most one report for each post or comment;
+duplicate submissions return HTTP 409 with code `REPORT_ALREADY_EXISTS`.
 
 Message creation and editing use the same moderation rules. Blocked messages
 return HTTP 422 with code `MESSAGE_MODERATION_BLOCKED`.

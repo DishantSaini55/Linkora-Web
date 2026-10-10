@@ -20,6 +20,7 @@ const originalEnvironment = {
   rateLimitCommentMax: process.env.RATE_LIMIT_COMMENT_MAX,
   rateLimitNotificationMax: process.env.RATE_LIMIT_NOTIFICATION_MAX,
   notificationCollectionId: process.env.APPWRITE_NOTIFICATION_COLLECTION_ID,
+  reportsCollectionId: process.env.APPWRITE_REPORTS_COLLECTION_ID,
   safetyCollectionId: process.env.APPWRITE_SAFETY_COLLECTION_ID,
 };
 const originalFetch = globalThis.fetch;
@@ -57,6 +58,12 @@ afterEach(() => {
   } else {
     process.env.APPWRITE_NOTIFICATION_COLLECTION_ID =
       originalEnvironment.notificationCollectionId;
+  }
+  if (originalEnvironment.reportsCollectionId === undefined) {
+    delete process.env.APPWRITE_REPORTS_COLLECTION_ID;
+  } else {
+    process.env.APPWRITE_REPORTS_COLLECTION_ID =
+      originalEnvironment.reportsCollectionId;
   }
   if (originalEnvironment.safetyCollectionId === undefined) {
     delete process.env.APPWRITE_SAFETY_COLLECTION_ID;
@@ -216,6 +223,9 @@ test("creates a report with the authenticated reporter", async () => {
   const requests = [];
   globalThis.fetch = async (url, options = {}) => {
     requests.push({ url: String(url), options });
+    if (String(url).includes("/documents?")) {
+      return new Response(JSON.stringify({ documents: [] }), { status: 200 });
+    }
     return new Response(JSON.stringify({ $id: "report-1", reporter: "user-1" }), {
       status: 201,
     });
@@ -231,9 +241,34 @@ test("creates a report with the authenticated reporter", async () => {
 
   assert.equal(result.status, 200);
   assert.equal(result.body.reporter, "user-1");
-  const payload = JSON.parse(requests[0].options.body);
+  assert.equal(requests.length, 2);
+  const payload = JSON.parse(requests[1].options.body);
   assert.equal(payload.data.reporter, "user-1");
   assert.deepEqual(payload.permissions, ['read("user:user-1")']);
+});
+
+test("rejects a duplicate report for the same actor and target", async () => {
+  process.env.APPWRITE_REPORTS_COLLECTION_ID = "reports";
+  let createRequestCount = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    if (options.method === "POST") createRequestCount += 1;
+    return new Response(
+      JSON.stringify({ documents: [{ $id: "existing-report" }] }),
+      { status: 200 }
+    );
+  };
+
+  const result = await invokeFunction({
+    action: "create-report",
+    reporter: "user-1",
+    targetType: "post",
+    targetId: "post-1",
+    reason: "Spam",
+  });
+
+  assert.equal(result.status, 409);
+  assert.equal(result.body.code, "REPORT_ALREADY_EXISTS");
+  assert.equal(createRequestCount, 0);
 });
 
 test("rejects moderator report actions without report configuration", async () => {
