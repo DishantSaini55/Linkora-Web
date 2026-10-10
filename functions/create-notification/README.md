@@ -70,3 +70,7 @@ AI generation, comment creation, and message sending return HTTP 429 with code
 `RATE_LIMITED` when an actor exceeds its configured limit. Limits are enforced
 per Function instance; use a shared Appwrite-backed counter or gateway limit
 when strict global limits across multiple Function instances are required.
+
+Moderator report actions, notification creation, and notification read updates
+fail explicitly when their required collection IDs are missing; the Function
+does not issue requests to malformed Appwrite URLs.

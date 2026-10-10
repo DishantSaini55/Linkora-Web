@@ -383,6 +383,11 @@ export default async ({ req, res, error }) => {
       if (!isModerator(actor)) {
         return res.json({ message: "Moderator authorization is required." }, 403);
       }
+      if (!process.env.APPWRITE_REPORTS_COLLECTION_ID) {
+        throw new Error(
+          "Reports collection is not configured. Set APPWRITE_REPORTS_COLLECTION_ID."
+        );
+      }
 
       const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
       if (body.action === "update-report") {
@@ -427,6 +432,11 @@ export default async ({ req, res, error }) => {
         body.targetType === "post"
           ? process.env.APPWRITE_POST_COLLECTION_ID
           : process.env.APPWRITE_COMMENTS_COLLECTION_ID;
+      if (!collectionId) {
+        throw new Error(
+          `${body.targetType === "post" ? "Posts" : "Comments"} collection is not configured.`
+        );
+      }
       await appwriteRequest(
         `${databasePath}/collections/${collectionId}/documents/${body.targetId}`,
         { method: "DELETE" }
@@ -816,6 +826,11 @@ export default async ({ req, res, error }) => {
       typeof body.recipient === "string" &&
       body.recipient === actor
     ) {
+      if (!process.env.APPWRITE_NOTIFICATION_COLLECTION_ID) {
+        throw new Error(
+          "Notifications collection is not configured. Set APPWRITE_NOTIFICATION_COLLECTION_ID."
+        );
+      }
       const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
       const baseUrl =
         `${endpoint}/databases/${process.env.APPWRITE_DATABASE_ID}` +
@@ -883,6 +898,11 @@ export default async ({ req, res, error }) => {
     if (requestedActor !== actor) {
       return res.json({ message: "The actor does not match the session." }, 403);
     }
+    if (!process.env.APPWRITE_NOTIFICATION_COLLECTION_ID) {
+      throw new Error(
+        "Notifications collection is not configured. Set APPWRITE_NOTIFICATION_COLLECTION_ID."
+      );
+    }
 
     const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
     const response = await fetch(
@@ -934,7 +954,14 @@ export default async ({ req, res, error }) => {
           action === "generate-hashtags" ||
           action === "create-comment" ||
           action === "update-comment" ||
-          action === "delete-comment"
+          action === "delete-comment" ||
+          action === "send-message" ||
+          action === "edit-message" ||
+          action === "delete-message" ||
+          action === "mark-read" ||
+          action === "update-report" ||
+          action === "delete-content" ||
+          action === ""
             ? message
             : "Notification creation failed.",
       },

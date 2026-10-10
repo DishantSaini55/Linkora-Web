@@ -162,6 +162,33 @@ test("rejects notification actor spoofing", async () => {
   assert.equal(result.body.message, "The actor does not match the session.");
 });
 
+test("rejects moderator report actions without report configuration", async () => {
+  process.env.MODERATOR_ACCOUNT_ID = "moderator-1";
+  delete process.env.APPWRITE_REPORTS_COLLECTION_ID;
+  const result = await invokeFunction(
+    {
+      action: "update-report",
+      reportId: "report-1",
+      status: "reviewed",
+    },
+    "moderator-1"
+  );
+  assert.equal(result.status, 500);
+  assert.match(result.body.message, /Reports collection is not configured/);
+});
+
+test("rejects notification creation without notification configuration", async () => {
+  delete process.env.APPWRITE_NOTIFICATION_COLLECTION_ID;
+  const result = await invokeFunction({
+    recipient: "user-2",
+    actor: "user-1",
+    type: "like",
+    post: "post-1",
+  });
+  assert.equal(result.status, 500);
+  assert.match(result.body.message, /Notifications collection is not configured/);
+});
+
 test("creates a moderated comment through Appwrite", async () => {
   const requests = [];
   globalThis.fetch = async (url, options = {}) => {
