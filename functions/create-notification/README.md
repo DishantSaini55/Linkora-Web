@@ -67,6 +67,10 @@ moderation before creating or updating a comment. The Function API key needs
 Comments create/update access and Users read access. Blocked comments return
 HTTP 422 with code `COMMENT_MODERATION_BLOCKED`.
 
+Report creation also goes through the Function. The authenticated actor must
+match the reporter field, and reports are created with private reporter read
+permissions.
+
 Message creation and editing use the same moderation rules. Blocked messages
 return HTTP 422 with code `MESSAGE_MODERATION_BLOCKED`.
 

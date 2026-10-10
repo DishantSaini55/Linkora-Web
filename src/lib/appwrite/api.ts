@@ -673,13 +673,17 @@ export async function createReport(
     throw new Error("Reports collection is not configured.");
   }
 
-  return databases.createDocument(
-    appwriteConfig.databaseId,
-    appwriteConfig.reportsCollectionId,
-    ID.unique(),
-    { reporter, targetType, targetId, reason },
-    [Permission.read(Role.user(reporter))]
-  );
+  if (!isModerationFunctionConfigured) {
+    throw new Error("Moderation Function is not configured.");
+  }
+
+  return executeModerationAction({
+    action: "create-report",
+    reporter,
+    targetType,
+    targetId,
+    reason,
+  });
 }
 
 export async function getReports() {

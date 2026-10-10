@@ -379,6 +379,57 @@ export default async ({ req, res, error }) => {
         ? JSON.parse(req.body)
         : req.body || {};
     action = typeof body.action === "string" ? body.action : "";
+    if (body.action === "create-report") {
+      if (
+        typeof body.reporter !== "string" ||
+        body.reporter !== actor ||
+        !["post", "comment"].includes(body.targetType) ||
+        typeof body.targetId !== "string" ||
+        !body.targetId.trim() ||
+        body.targetId.length > 100 ||
+        typeof body.reason !== "string" ||
+        !body.reason.trim() ||
+        body.reason.length > 2200
+      ) {
+        return res.json({ message: "Invalid report payload." }, 400);
+      }
+      const retryAfterSeconds = checkRateLimit(actor, "notification");
+      if (retryAfterSeconds) {
+        return res.json(
+          {
+            code: "RATE_LIMITED",
+            message: "Report rate limit exceeded. Please try again later.",
+            retryAfterSeconds,
+          },
+          429
+        );
+      }
+      if (!process.env.APPWRITE_REPORTS_COLLECTION_ID) {
+        throw new Error(
+          "Reports collection is not configured. Set APPWRITE_REPORTS_COLLECTION_ID."
+        );
+      }
+      const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
+      return res.json(
+        await appwriteRequest(
+          `${databasePath}/collections/${process.env.APPWRITE_REPORTS_COLLECTION_ID}/documents`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              documentId: "unique()",
+              data: {
+                reporter: actor,
+                targetType: body.targetType,
+                targetId: body.targetId.trim(),
+                reason: body.reason.trim(),
+                status: "pending",
+              },
+              permissions: [`read("user:${actor}")`],
+            }),
+          }
+        )
+      );
+    }
     if (
       body.action === "update-report" ||
       body.action === "delete-content"

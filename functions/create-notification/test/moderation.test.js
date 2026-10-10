@@ -196,6 +196,46 @@ test("rejects notification actor spoofing", async () => {
   assert.equal(result.body.message, "The actor does not match the session.");
 });
 
+test("rejects a spoofed report reporter", async () => {
+  const result = await invokeFunction(
+    {
+      action: "create-report",
+      reporter: "different-user",
+      targetType: "post",
+      targetId: "post-1",
+      reason: "Spam",
+    },
+    "user-1"
+  );
+  assert.equal(result.status, 400);
+  assert.equal(result.body.message, "Invalid report payload.");
+});
+
+test("creates a report with the authenticated reporter", async () => {
+  process.env.APPWRITE_REPORTS_COLLECTION_ID = "reports";
+  const requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url: String(url), options });
+    return new Response(JSON.stringify({ $id: "report-1", reporter: "user-1" }), {
+      status: 201,
+    });
+  };
+
+  const result = await invokeFunction({
+    action: "create-report",
+    reporter: "user-1",
+    targetType: "comment",
+    targetId: "comment-1",
+    reason: "Harassment",
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.reporter, "user-1");
+  const payload = JSON.parse(requests[0].options.body);
+  assert.equal(payload.data.reporter, "user-1");
+  assert.deepEqual(payload.permissions, ['read("user:user-1")']);
+});
+
 test("rejects moderator report actions without report configuration", async () => {
   process.env.MODERATOR_ACCOUNT_ID = "moderator-1";
   delete process.env.APPWRITE_REPORTS_COLLECTION_ID;
