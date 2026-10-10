@@ -390,11 +390,6 @@ export default async ({ req, res, error }) => {
     }
 
     if (body.action === "create-comment") {
-      if (!commentsCollectionId) {
-        throw new Error(
-          "Comments collection is not configured. Set APPWRITE_COMMENTS_COLLECTION_ID."
-        );
-      }
       if (
         typeof body.postId !== "string" ||
         typeof body.authorId !== "string" ||
@@ -411,6 +406,11 @@ export default async ({ req, res, error }) => {
         return res.json(
           { code: "COMMENT_MODERATION_BLOCKED", message: moderationReason },
           422
+        );
+      }
+      if (!commentsCollectionId) {
+        throw new Error(
+          "Comments collection is not configured. Set APPWRITE_COMMENTS_COLLECTION_ID."
         );
       }
 
@@ -762,3 +762,5 @@ export default async ({ req, res, error }) => {
     );
   }
 };
+
+export { getToxicCommentReason, isModerator, normalizeCommentText };
