@@ -128,5 +128,6 @@ export type INewStory = {
     mediaType: StoryMediaType;
     fileId: string;
     durationSeconds?: number;
+    overlays?: StoryOverlay[];
   }>;
 };

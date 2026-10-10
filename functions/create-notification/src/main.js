@@ -429,6 +429,29 @@ export default async ({ req, res, error }) => {
               typeof segment.fileId !== "string" ||
               !/^[A-Za-z0-9._-]{1,100}$/.test(segment.fileId) ||
               !["image", "video"].includes(segment.mediaType) ||
+              (segment.overlays !== undefined &&
+                (!Array.isArray(segment.overlays) ||
+                  segment.overlays.length > 10 ||
+                  segment.overlays.some(
+                    (overlay) =>
+                      !overlay ||
+                      !["text", "emoji"].includes(overlay.type) ||
+                      typeof overlay.value !== "string" ||
+                      !overlay.value.trim() ||
+                      overlay.value.length > 200 ||
+                      typeof overlay.x !== "number" ||
+                      overlay.x < 0 ||
+                      overlay.x > 1 ||
+                      typeof overlay.y !== "number" ||
+                      overlay.y < 0 ||
+                      overlay.y > 1 ||
+                      typeof overlay.scale !== "number" ||
+                      overlay.scale < 0.5 ||
+                      overlay.scale > 3 ||
+                      typeof overlay.rotation !== "number" ||
+                      overlay.rotation < -180 ||
+                      overlay.rotation > 180
+                  ))) ||
               (segment.mediaType === "video" &&
                 (typeof segment.durationSeconds !== "number" ||
                   !Number.isFinite(segment.durationSeconds) ||
@@ -524,6 +547,9 @@ export default async ({ req, res, error }) => {
                       order: segment.order,
                       mediaType: segment.mediaType,
                       fileId: segment.fileId,
+                      ...(segment.overlays?.length
+                        ? { overlays: JSON.stringify(segment.overlays) }
+                        : {}),
                       ...(segment.durationSeconds !== undefined
                         ? { durationSeconds: segment.durationSeconds }
                         : {}),

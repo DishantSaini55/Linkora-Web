@@ -4,6 +4,7 @@ import { Models } from "appwrite";
 
 import { getFileView } from "@/lib/appwrite/api";
 import { useMarkStoryViewed } from "@/lib/react-query/queries";
+import { StoryOverlay } from "@/types";
 
 type Story = Models.Document & { segments: Models.Document[] };
 
@@ -28,6 +29,16 @@ const StoriesViewer = ({
     () => (segment?.fileId ? getFileView(segment.fileId).toString() : ""),
     [segment?.fileId]
   );
+  const overlays = useMemo<StoryOverlay[]>(() => {
+    if (!segment?.overlays) return [];
+    if (Array.isArray(segment.overlays)) return segment.overlays as StoryOverlay[];
+    try {
+      const parsed = JSON.parse(segment.overlays);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [segment?.overlays]);
 
   useEffect(() => {
     setSegmentIndex(0);
@@ -107,23 +118,38 @@ const StoriesViewer = ({
         <div className="absolute left-3 top-10 z-10 text-sm text-white">
           {story.owner}
         </div>
-        {segment.mediaType === "video" ? (
-          <video
-            key={segment.$id}
-            src={mediaUrl}
-            className="max-h-[85vh] w-full rounded-2xl object-contain"
-            autoPlay={!paused}
-            muted
-            playsInline
-            controls={false}
-          />
-        ) : (
-          <img
-            src={mediaUrl}
-            alt="Story"
-            className="max-h-[85vh] w-full rounded-2xl object-contain"
-          />
-        )}
+        <div className="relative max-h-[85vh] w-full">
+          {segment.mediaType === "video" ? (
+            <video
+              key={segment.$id}
+              src={mediaUrl}
+              className="max-h-[85vh] w-full rounded-2xl object-contain"
+              autoPlay={!paused}
+              muted
+              playsInline
+              controls={false}
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt="Story"
+              className="max-h-[85vh] w-full rounded-2xl object-contain"
+            />
+          )}
+          {overlays.map((overlay, index) => (
+            <span
+              key={`${overlay.value}-${index}`}
+              className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 whitespace-pre-wrap text-center font-semibold text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)]"
+              style={{
+                left: `${overlay.x * 100}%`,
+                top: `${overlay.y * 100}%`,
+                transform: `translate(-50%, -50%) rotate(${overlay.rotation}deg) scale(${overlay.scale})`,
+                color: overlay.color || "white",
+              }}>
+              {overlay.value}
+            </span>
+          ))}
+        </div>
         <button
           type="button"
           aria-label="Previous Story segment"

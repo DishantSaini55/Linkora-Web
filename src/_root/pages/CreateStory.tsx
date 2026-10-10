@@ -11,13 +11,14 @@ import {
 } from "@/lib/appwrite/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/react-query/queryKeys";
-import { StoryPrivacy } from "@/types";
+import { StoryOverlay, StoryPrivacy } from "@/types";
 
 type DraftSegment = {
   file: File;
   previewUrl: string;
   mediaType: "image" | "video";
   durationSeconds?: number;
+  overlays: StoryOverlay[];
 };
 
 const MAX_SEGMENTS = 10;
@@ -47,6 +48,8 @@ const CreateStory = () => {
   const [privacy, setPrivacy] = useState<StoryPrivacy>("public");
   const [error, setError] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [overlayText, setOverlayText] = useState("");
   const segmentsRef = useRef<DraftSegment[]>([]);
 
   useEffect(() => {
@@ -93,6 +96,7 @@ const CreateStory = () => {
           previewUrl: URL.createObjectURL(file),
           mediaType: file.type.startsWith("video") ? "video" : "image",
           durationSeconds,
+          overlays: [],
         });
       }
       setSegments((current) => [...current, ...nextSegments]);
@@ -143,6 +147,7 @@ const CreateStory = () => {
           ...(segment.durationSeconds !== undefined
             ? { durationSeconds: segment.durationSeconds }
             : {}),
+          overlays: segment.overlays,
         });
       }
       await createStory({ privacy, segments: uploadedSegments });
@@ -194,11 +199,21 @@ const CreateStory = () => {
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {segments.map((segment, index) => (
               <div key={`${segment.file.name}-${index}`} className="rounded-xl bg-dark-3 p-3">
-                {segment.mediaType === "video" ? (
-                  <video src={segment.previewUrl} className="h-56 w-full rounded-lg object-cover" muted />
-                ) : (
-                  <img src={segment.previewUrl} alt={segment.file.name} className="h-56 w-full rounded-lg object-cover" />
-                )}
+                <div className="relative">
+                  {segment.mediaType === "video" ? (
+                    <video src={segment.previewUrl} className="h-56 w-full rounded-lg object-cover" muted />
+                  ) : (
+                    <img src={segment.previewUrl} alt={segment.file.name} className="h-56 w-full rounded-lg object-cover" />
+                  )}
+                  {segment.overlays.map((overlay, overlayIndex) => (
+                    <span
+                      key={`${overlay.value}-${overlayIndex}`}
+                      className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-pre-wrap text-center font-semibold text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)]"
+                      style={{ color: overlay.color || "white", transform: `translate(-50%, -50%) rotate(${overlay.rotation}deg) scale(${overlay.scale})` }}>
+                      {overlay.value}
+                    </span>
+                  ))}
+                </div>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="small-medium truncate text-light-2">{index + 1}. {segment.file.name}</span>
                   <button type="button" aria-label={`Remove segment ${index + 1}`} onClick={() => removeSegment(index)}>
@@ -206,6 +221,9 @@ const CreateStory = () => {
                   </button>
                 </div>
                 <div className="mt-2 flex gap-2">
+                  <Button type="button" className="shad-button_dark_4 flex-1" onClick={() => setSelectedIndex(index)}>
+                    Edit overlay
+                  </Button>
                   <Button type="button" className="shad-button_dark_4 flex-1" disabled={index === 0} onClick={() => moveSegment(index, -1)}>
                     <ChevronUp size={16} />
                   </Button>
@@ -216,6 +234,82 @@ const CreateStory = () => {
               </div>
             ))}
           </div>
+          {segments[selectedIndex] && (
+            <div className="mt-6 rounded-xl bg-dark-3 p-4">
+              <p className="small-semibold text-light-2">
+                Overlay for segment {selectedIndex + 1}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={overlayText}
+                  onChange={(event) => setOverlayText(event.target.value.slice(0, 200))}
+                  placeholder="Add text overlay"
+                  className="shad-input flex-1"
+                  maxLength={200}
+                />
+                <Button
+                  type="button"
+                  className="shad-button_dark_4"
+                  onClick={() => {
+                    const value = overlayText.trim();
+                    if (!value) return;
+                    setSegments((current) =>
+                      current.map((segment, index) =>
+                        index === selectedIndex
+                          ? {
+                              ...segment,
+                              overlays: [
+                                ...segment.overlays,
+                                {
+                                  type: "text",
+                                  value,
+                                  x: 0.5,
+                                  y: 0.5,
+                                  scale: 1,
+                                  rotation: 0,
+                                },
+                              ],
+                            }
+                          : segment
+                      )
+                    );
+                    setOverlayText("");
+                  }}>
+                  Add
+                </Button>
+                {["✨", "❤️", "🔥", "😂"].map((emoji) => (
+                  <Button
+                    key={emoji}
+                    type="button"
+                    className="shad-button_dark_4 px-3"
+                    onClick={() =>
+                      setSegments((current) =>
+                        current.map((segment, index) =>
+                          index === selectedIndex
+                            ? {
+                                ...segment,
+                                overlays: [
+                                  ...segment.overlays,
+                                  {
+                                    type: "emoji",
+                                    value: emoji,
+                                    x: 0.5,
+                                    y: 0.5,
+                                    scale: 1,
+                                    rotation: 0,
+                                  },
+                                ],
+                              }
+                            : segment
+                        )
+                      )
+                    }>
+                    {emoji}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <label className="mt-6 flex flex-col gap-2">
             <span className="small-semibold text-light-2">Who can view this Story?</span>
             <select

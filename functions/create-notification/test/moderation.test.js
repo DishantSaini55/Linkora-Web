@@ -418,6 +418,33 @@ test("rejects Story media without authenticated ownership", async () => {
   assert.equal(result.body.code, "STORY_FILE_NOT_OWNED");
 });
 
+test("rejects Story overlays outside the validated canvas", async () => {
+  const result = await invokeFunction({
+    action: "create-story",
+    privacy: "public",
+    segments: [
+      {
+        order: 0,
+        mediaType: "image",
+        fileId: "file-1",
+        overlays: [
+          {
+            type: "text",
+            value: "Too far",
+            x: 2,
+            y: 0.5,
+            scale: 1,
+            rotation: 0,
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(result.status, 400);
+  assert.equal(result.body.message, "Invalid Story payload.");
+});
+
 test("lists only active public and own Stories with ordered segments", async () => {
   process.env.APPWRITE_STORIES_COLLECTION_ID = "stories";
   process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID = "story-segments";
