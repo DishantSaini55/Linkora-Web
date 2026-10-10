@@ -174,9 +174,11 @@ async function appwriteRequest(path, options = {}) {
   });
   const text = await response.text();
   if (!response.ok) {
-    throw new Error(
+    const requestError = new Error(
       `Appwrite returned ${response.status}: ${text || "empty response"}`
     );
+    requestError.status = response.status;
+    throw requestError;
   }
   return text ? JSON.parse(text) : {};
 }
@@ -410,6 +412,32 @@ export default async ({ req, res, error }) => {
         );
       }
       const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
+      const targetCollectionId =
+        body.targetType === "post"
+          ? process.env.APPWRITE_POST_COLLECTION_ID
+          : commentsCollectionId;
+      if (!targetCollectionId) {
+        throw new Error(
+          `${body.targetType === "post" ? "Posts" : "Comments"} collection is not configured.`
+        );
+      }
+      try {
+        await appwriteRequest(
+          `${databasePath}/collections/${targetCollectionId}/documents/` +
+            encodeURIComponent(body.targetId.trim())
+        );
+      } catch (requestError) {
+        if (requestError?.status === 404) {
+          return res.json(
+            {
+              code: "REPORT_TARGET_NOT_FOUND",
+              message: "The reported content could not be found.",
+            },
+            404
+          );
+        }
+        throw requestError;
+      }
       const reportCollectionPath =
         `${databasePath}/collections/${process.env.APPWRITE_REPORTS_COLLECTION_ID}`;
       const duplicateQueries = [

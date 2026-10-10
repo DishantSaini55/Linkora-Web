@@ -71,6 +71,8 @@ Report creation also goes through the Function. The authenticated actor must
 match the reporter field, and reports are created with private reporter read
 permissions. A user can submit at most one report for each post or comment;
 duplicate submissions return HTTP 409 with code `REPORT_ALREADY_EXISTS`.
+The Function verifies that the target exists before accepting the report and
+returns HTTP 404 with code `REPORT_TARGET_NOT_FOUND` otherwise.
 
 Message creation and editing use the same moderation rules. Blocked messages
 return HTTP 422 with code `MESSAGE_MODERATION_BLOCKED`.

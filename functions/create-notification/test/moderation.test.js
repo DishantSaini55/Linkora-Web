@@ -21,6 +21,7 @@ const originalEnvironment = {
   rateLimitNotificationMax: process.env.RATE_LIMIT_NOTIFICATION_MAX,
   notificationCollectionId: process.env.APPWRITE_NOTIFICATION_COLLECTION_ID,
   reportsCollectionId: process.env.APPWRITE_REPORTS_COLLECTION_ID,
+  postCollectionId: process.env.APPWRITE_POST_COLLECTION_ID,
   safetyCollectionId: process.env.APPWRITE_SAFETY_COLLECTION_ID,
 };
 const originalFetch = globalThis.fetch;
@@ -64,6 +65,12 @@ afterEach(() => {
   } else {
     process.env.APPWRITE_REPORTS_COLLECTION_ID =
       originalEnvironment.reportsCollectionId;
+  }
+  if (originalEnvironment.postCollectionId === undefined) {
+    delete process.env.APPWRITE_POST_COLLECTION_ID;
+  } else {
+    process.env.APPWRITE_POST_COLLECTION_ID =
+      originalEnvironment.postCollectionId;
   }
   if (originalEnvironment.safetyCollectionId === undefined) {
     delete process.env.APPWRITE_SAFETY_COLLECTION_ID;
@@ -220,9 +227,13 @@ test("rejects a spoofed report reporter", async () => {
 
 test("creates a report with the authenticated reporter", async () => {
   process.env.APPWRITE_REPORTS_COLLECTION_ID = "reports";
+  process.env.APPWRITE_COMMENTS_COLLECTION_ID = "comments";
   const requests = [];
   globalThis.fetch = async (url, options = {}) => {
     requests.push({ url: String(url), options });
+    if (!String(url).includes("?") && !options.method) {
+      return new Response(JSON.stringify({ $id: "comment-1" }), { status: 200 });
+    }
     if (String(url).includes("/documents?")) {
       return new Response(JSON.stringify({ documents: [] }), { status: 200 });
     }
@@ -241,17 +252,21 @@ test("creates a report with the authenticated reporter", async () => {
 
   assert.equal(result.status, 200);
   assert.equal(result.body.reporter, "user-1");
-  assert.equal(requests.length, 2);
-  const payload = JSON.parse(requests[1].options.body);
+  assert.equal(requests.length, 3);
+  const payload = JSON.parse(requests[2].options.body);
   assert.equal(payload.data.reporter, "user-1");
   assert.deepEqual(payload.permissions, ['read("user:user-1")']);
 });
 
 test("rejects a duplicate report for the same actor and target", async () => {
   process.env.APPWRITE_REPORTS_COLLECTION_ID = "reports";
+  process.env.APPWRITE_POST_COLLECTION_ID = "posts";
   let createRequestCount = 0;
   globalThis.fetch = async (url, options = {}) => {
     if (options.method === "POST") createRequestCount += 1;
+    if (!String(url).includes("?")) {
+      return new Response(JSON.stringify({ $id: "post-1" }), { status: 200 });
+    }
     return new Response(
       JSON.stringify({ documents: [{ $id: "existing-report" }] }),
       { status: 200 }
@@ -269,6 +284,30 @@ test("rejects a duplicate report for the same actor and target", async () => {
   assert.equal(result.status, 409);
   assert.equal(result.body.code, "REPORT_ALREADY_EXISTS");
   assert.equal(createRequestCount, 0);
+});
+
+test("rejects a report when the target does not exist", async () => {
+  process.env.APPWRITE_REPORTS_COLLECTION_ID = "reports";
+  process.env.APPWRITE_POST_COLLECTION_ID = "posts";
+  let reportLookupCount = 0;
+  globalThis.fetch = async (url) => {
+    reportLookupCount += 1;
+    return new Response(JSON.stringify({ message: "Not found" }), {
+      status: 404,
+    });
+  };
+
+  const result = await invokeFunction({
+    action: "create-report",
+    reporter: "user-1",
+    targetType: "post",
+    targetId: "missing-post",
+    reason: "Spam",
+  });
+
+  assert.equal(result.status, 404);
+  assert.equal(result.body.code, "REPORT_TARGET_NOT_FOUND");
+  assert.equal(reportLookupCount, 1);
 });
 
 test("rejects moderator report actions without report configuration", async () => {
