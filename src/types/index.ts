@@ -64,3 +64,58 @@ export type IMessage = {
   attachmentUrl?: string;
   editedAt?: string;
 };
+
+export type StoryPrivacy = "public" | "followers";
+
+export type StoryMediaType = "image" | "video";
+
+export type StoryOverlay = {
+  type: "text" | "emoji" | "music";
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+  value: string;
+  color?: string;
+  fontSize?: number;
+};
+
+export type StoryMusic = {
+  source: "user-upload";
+  fileId: string;
+  title: string;
+  artist?: string;
+  startSeconds: number;
+  endSeconds: number;
+  volume: number;
+  autoplay: boolean;
+};
+
+export type IStory = {
+  $id: string;
+  $createdAt: string;
+  owner: string;
+  privacy: StoryPrivacy;
+  expiresAt: string;
+  status: "published" | "expired" | "deleted";
+};
+
+export type IStorySegment = {
+  $id: string;
+  storyId: string;
+  owner: string;
+  order: number;
+  mediaType: StoryMediaType;
+  fileId: string;
+  durationSeconds?: number;
+  overlays?: StoryOverlay[];
+  music?: StoryMusic;
+};
+
+export type IStoryView = {
+  $id: string;
+  storyId: string;
+  segmentId: string;
+  viewerAccountId: string;
+  viewedAt: string;
+};

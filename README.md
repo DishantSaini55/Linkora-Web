@@ -95,6 +95,9 @@ Populate `.env.local` with the public identifiers from your Appwrite project. Ne
 | `VITE_APPWRITE_MESSAGES_COLLECTION_ID` | Optional private Messages table ID |
 | `VITE_APPWRITE_PRESENCE_COLLECTION_ID` | Optional Presence table ID for cross-device online and typing status |
 | `VITE_APPWRITE_INTERACTION_EVENTS_COLLECTION_ID` | Optional InteractionEvents table ID for feed analytics and personalization |
+| `VITE_APPWRITE_STORIES_COLLECTION_ID` | Stories table ID |
+| `VITE_APPWRITE_STORY_SEGMENTS_COLLECTION_ID` | Ordered StorySegments table ID |
+| `VITE_APPWRITE_STORY_VIEWS_COLLECTION_ID` | StoryViews table ID |
 
 The Messages table should include `senderAccountId` (string), `attachmentId`
 (optional string), and `attachmentUrl` (optional string). The Function also
@@ -113,6 +116,27 @@ The Users collection should also include these optional attributes:
 - `imageId` (string): the Storage file ID for the current profile picture.
 - `nameChangedAt` (datetime): set automatically when the display name changes.
 - `usernameChangedAt` (datetime): set automatically when the username changes.
+
+### Stories schema contract
+
+Stories are planned as a separate media subsystem. Phase 3A only adds the
+configuration and type contracts; it does not publish or display Stories yet.
+Create these Appwrite tables before enabling later Stories phases:
+
+- `Stories`: `owner` (string), `privacy` (enum: `public`, `followers`),
+  `expiresAt` (datetime), `status` (enum: `published`, `expired`, `deleted`)
+- `StorySegments`: `storyId` (string), `owner` (string), `order` (integer),
+  `mediaType` (enum: `image`, `video`), `fileId` (string),
+  `durationSeconds` (float, optional), `overlays` (string, optional),
+  `music` (string, optional)
+- `StoryViews`: `storyId` (string), `segmentId` (string),
+  `viewerAccountId` (string), `viewedAt` (datetime)
+
+Use indexes on `Stories.owner`, `Stories.expiresAt`, `StorySegments.storyId`,
+`StorySegments.owner`, `StoryViews.storyId`, and `StoryViews.viewerAccountId`.
+The Function will enforce ownership, privacy, expiration, file validation, and
+view deduplication in the later implementation phases. Do not expose the
+Stories bucket publicly or store media binaries in database documents.
 
 Create a **Key** index on `username` so profile updates can reject duplicate
 usernames reliably. Usernames may contain letters, numbers, underscores, and

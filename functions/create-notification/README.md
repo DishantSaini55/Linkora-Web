@@ -23,6 +23,9 @@ Add these variables to the Function's environment:
 - `APPWRITE_REPORTS_COLLECTION_ID`: the Reports table ID
 - `APPWRITE_POST_COLLECTION_ID`: the Posts table ID
 - `APPWRITE_COMMENTS_COLLECTION_ID`: the Comments table ID
+- `APPWRITE_STORIES_COLLECTION_ID`: the Stories table ID for Story actions
+- `APPWRITE_STORY_SEGMENTS_COLLECTION_ID`: the ordered StorySegments table ID
+- `APPWRITE_STORY_VIEWS_COLLECTION_ID`: the StoryViews table ID
 - `MODERATOR_ACCOUNT_IDS`: comma-separated Appwrite Auth account IDs allowed to moderate.
   `MODERATOR_ACCOUNT_ID` is also accepted for a single moderator.
 - `AI_PROVIDER`: `gemini` (default) or `openai`
