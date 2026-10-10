@@ -4,7 +4,13 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button, Textarea } from "@/components/ui";
 import { Loader } from "@/components/shared";
 import { useUserContext } from "@/context/AuthContext";
-import { getUserImageUrl, getFileView, uploadFile } from "@/lib/appwrite/api";
+import {
+  getUserImageUrl,
+  getFileView,
+  getUserPresence,
+  setUserPresence,
+  uploadFile,
+} from "@/lib/appwrite/api";
 import {
   appwriteConfig,
   client,
@@ -37,9 +43,9 @@ const Messages = () => {
   const [content, setContent] = useState("");
   const [search, setSearch] = useState("");
   const [attachment, setAttachment] = useState<{ id: string; url: string }>();
-  const [isTyping, setIsTyping] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [online, setOnline] = useState(navigator.onLine);
+  const [selectedOnline, setSelectedOnline] = useState(false);
+  const [selectedTyping, setSelectedTyping] = useState(false);
 
   useEffect(() => {
     const unsubscribe = client.subscribe(
@@ -50,14 +56,34 @@ const Messages = () => {
   }, [refetchMessages]);
 
   useEffect(() => {
-    const update = () => setOnline(navigator.onLine);
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
+    if (!selectedUser?.$id) {
+      setSelectedOnline(false);
+      setSelectedTyping(false);
+      return;
+    }
+    let active = true;
+    const syncSelectedPresence = async () => {
+      const presence = await getUserPresence(selectedUser.$id);
+      if (active) {
+        setSelectedOnline(Boolean(presence?.online));
+        setSelectedTyping(presence?.typingTo === user.id);
+      }
     };
-  }, []);
+    syncSelectedPresence().catch((error) =>
+      console.error("Presence lookup failed", error)
+    );
+    const interval = window.setInterval(
+      () =>
+        syncSelectedPresence().catch((error) =>
+          console.error("Presence lookup failed", error)
+        ),
+      5_000
+    );
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [selectedUser?.$id, user.id]);
 
   const conversations = useMemo(() => {
     const participantIds = new Set<string>();
@@ -102,7 +128,7 @@ const Messages = () => {
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = content.trim();
-    if (!trimmed || !selectedUser) return;
+    if ((!trimmed && !attachment) || !selectedUser) return;
     if (isUserBlocked(selectedUser.$id)) {
       toast({
         title: "Message blocked",
@@ -132,7 +158,11 @@ const Messages = () => {
         onSuccess: () => {
           setContent("");
           setAttachment(undefined);
-          setIsTyping(false);
+          if (user.accountId) {
+            setUserPresence(user.id, user.accountId, navigator.onLine, "").catch(
+              (error) => console.error("Presence update failed", error)
+            );
+          }
         },
         onError: (error) =>
           toast({
@@ -147,10 +177,15 @@ const Messages = () => {
 
   const handleAttachment = async (file?: File) => {
     if (!file) return;
-    if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
+    if (
+      (!file.type.startsWith("image/") &&
+        !file.type.startsWith("application/pdf") &&
+        !file.type.startsWith("text/")) ||
+      file.size > 10 * 1024 * 1024
+    ) {
       toast({
         title: "Attachment rejected",
-        description: "Choose an image up to 10 MB.",
+        description: "Choose an image, PDF, or text file up to 10 MB.",
         variant: "destructive",
       });
       return;
@@ -268,11 +303,11 @@ const Messages = () => {
                     {selectedUser.name}
                   </Link>
                   <p className="small-regular text-light-3">
-                    @{selectedUser.username} · {online ? "online" : "offline"}
+                    @{selectedUser.username} · {selectedOnline ? "online" : "offline"}
                   </p>
                 </div>
               </div>
-              {isTyping && (
+              {selectedTyping && (
                 <p className="small-regular text-primary-400 mt-3">
                   {selectedUser.name} is typing...
                 </p>
@@ -295,11 +330,13 @@ const Messages = () => {
                         {message.content}
                       </p>
                       {message.attachmentUrl && (
-                        <img
-                          src={message.attachmentUrl}
-                          alt="Message attachment"
-                          className="mt-2 max-h-56 rounded-lg object-cover"
-                        />
+                        <a
+                          href={message.attachmentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 block underline">
+                          Open attachment
+                        </a>
                       )}
                       {message.sender === user.id && (
                         <div className="mt-2 flex gap-2 text-xs opacity-80">
@@ -343,7 +380,17 @@ const Messages = () => {
                   value={content}
                   onChange={(event) => {
                     setContent(event.target.value);
-                    setIsTyping(Boolean(event.target.value));
+                    const typing = Boolean(event.target.value);
+                    if (user.accountId) {
+                      setUserPresence(
+                        user.id,
+                        user.accountId,
+                        navigator.onLine,
+                        typing ? selectedUser.$id : ""
+                      ).catch((error) =>
+                        console.error("Typing presence update failed", error)
+                      );
+                    }
                   }}
                   placeholder="Write a message..."
                   maxLength={2000}

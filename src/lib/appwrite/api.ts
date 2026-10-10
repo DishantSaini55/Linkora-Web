@@ -587,17 +587,39 @@ export async function createComment(
     throw new Error("Comments collection is not configured.");
   }
 
-  return databases.createDocument(
-    appwriteConfig.databaseId,
-    appwriteConfig.commentsCollectionId,
-    ID.unique(),
-    { post: postId, author: authorId, content },
-    [
-      Permission.read(Role.any()),
-      Permission.update(Role.user(authorAccountId)),
-      Permission.delete(Role.user(authorAccountId)),
-    ]
+  if (!isModerationFunctionConfigured) {
+    throw new Error("Moderation Function is not configured.");
+  }
+
+  const execution = await functions.createExecution(
+    appwriteConfig.moderationFunctionId,
+    JSON.stringify({
+      action: "create-comment",
+      postId,
+      authorId,
+      authorAccountId,
+      content: content.trim(),
+    }),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
   );
+  if (
+    execution.status === "failed" ||
+    execution.responseStatusCode < 200 ||
+    execution.responseStatusCode >= 300
+  ) {
+    let message = execution.responseBody || "Comment was rejected.";
+    try {
+      const responseBody = JSON.parse(execution.responseBody || "{}");
+      if (typeof responseBody.message === "string") message = responseBody.message;
+    } catch {
+      // Preserve the Function response when it is not JSON.
+    }
+    throw new Error(message);
+  }
+  return JSON.parse(execution.responseBody || "{}");
 }
 
 export async function createReport(
@@ -880,29 +902,85 @@ export async function saveNotificationPreferences(
   );
 }
 
-export async function updateComment(commentId: string, content: string) {
+export async function updateComment(
+  commentId: string,
+  content: string,
+  authorAccountId: string
+) {
   if (!isCommentsConfigured) {
     throw new Error("Comments collection is not configured.");
   }
 
-  return databases.updateDocument(
-    appwriteConfig.databaseId,
-    appwriteConfig.commentsCollectionId,
-    commentId,
-    { content }
+  if (!isModerationFunctionConfigured) {
+    throw new Error("Moderation Function is not configured.");
+  }
+
+  const execution = await functions.createExecution(
+    appwriteConfig.moderationFunctionId,
+    JSON.stringify({
+      action: "update-comment",
+      commentId,
+      authorAccountId,
+      content: content.trim(),
+    }),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
   );
+  if (
+    execution.status === "failed" ||
+    execution.responseStatusCode < 200 ||
+    execution.responseStatusCode >= 300
+  ) {
+    let message = execution.responseBody || "Comment update was rejected.";
+    try {
+      const responseBody = JSON.parse(execution.responseBody || "{}");
+      if (typeof responseBody.message === "string") message = responseBody.message;
+    } catch {
+      // Preserve the Function response when it is not JSON.
+    }
+    throw new Error(message);
+  }
+  return JSON.parse(execution.responseBody || "{}");
 }
 
-export async function deleteComment(commentId: string) {
+export async function deleteComment(commentId: string, accountId: string) {
   if (!isCommentsConfigured) {
     throw new Error("Comments collection is not configured.");
   }
 
-  return databases.deleteDocument(
-    appwriteConfig.databaseId,
-    appwriteConfig.commentsCollectionId,
-    commentId
+  if (!isModerationFunctionConfigured) {
+    throw new Error("Moderation Function is not configured.");
+  }
+
+  const execution = await functions.createExecution(
+    appwriteConfig.moderationFunctionId,
+    JSON.stringify({
+      action: "delete-comment",
+      commentId,
+      accountId,
+    }),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
   );
+  if (
+    execution.status === "failed" ||
+    execution.responseStatusCode < 200 ||
+    execution.responseStatusCode >= 300
+  ) {
+    let message = execution.responseBody || "Comment deletion failed.";
+    try {
+      const responseBody = JSON.parse(execution.responseBody || "{}");
+      if (typeof responseBody.message === "string") message = responseBody.message;
+    } catch {
+      // Preserve the Function response when it is not JSON.
+    }
+    throw new Error(message);
+  }
+  return JSON.parse(execution.responseBody || "{}");
 }
 
 // ============================== GET USER'S POST
@@ -1000,6 +1078,70 @@ export async function getUnreadMessageCount(userId: string) {
   return result.total;
 }
 
+export async function getUserPresence(userId: string) {
+  if (!appwriteConfig.presenceCollectionId) return null;
+  try {
+    const presence = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.presenceCollectionId,
+      userId
+    );
+    const isFresh =
+      Date.now() - new Date(presence.updatedAt).getTime() < 30_000;
+    return isFresh
+      ? {
+          online: presence.online === true,
+          typingTo: typeof presence.typingTo === "string" ? presence.typingTo : "",
+        }
+      : { online: false, typingTo: "" };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /not found|could not be found|404/i.test(error.message)
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function setUserPresence(
+  userId: string,
+  accountId: string,
+  online: boolean,
+  typingTo = ""
+) {
+  if (!appwriteConfig.presenceCollectionId || !accountId) return null;
+  const data = { online, typingTo, updatedAt: new Date().toISOString() };
+  const permissions = [
+    Permission.read(Role.users()),
+    Permission.update(Role.user(accountId)),
+    Permission.delete(Role.user(accountId)),
+  ];
+  try {
+    return await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.presenceCollectionId,
+      userId,
+      data
+    );
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !/not found|could not be found|404/i.test(error.message)
+    ) {
+      throw error;
+    }
+    return databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.presenceCollectionId,
+      userId,
+      data,
+      permissions
+    );
+  }
+}
+
 function normalizeAccountId(accountId: string) {
   return accountId
     .trim()
@@ -1034,8 +1176,9 @@ export async function createMessage(
       recipientProfileId: recipient,
       senderProfileId: sender,
       content: content.trim(),
-      attachmentId: attachment?.id,
-      attachmentUrl: attachment?.url,
+      ...(attachment
+        ? { attachmentId: attachment.id, attachmentUrl: attachment.url }
+        : {}),
     }),
     false,
     "/",
@@ -1061,6 +1204,48 @@ export async function createMessage(
   return execution;
 }
 
+export async function generateAiContent(request: {
+  action: "generate-caption" | "generate-hashtags";
+  topic: string;
+  tone: "casual" | "professional" | "funny" | "inspirational" | "educational";
+  length: "short" | "medium" | "long";
+}) {
+  if (!isMessageFunctionConfigured) {
+    throw new Error("AI Function is not configured.");
+  }
+  const execution = await functions.createExecution(
+    appwriteConfig.messageFunctionId,
+    JSON.stringify(request),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
+  );
+  if (
+    execution.status === "failed" ||
+    execution.responseStatusCode < 200 ||
+    execution.responseStatusCode >= 300
+  ) {
+    let message = "AI generation failed.";
+    try {
+      const body = JSON.parse(execution.responseBody || "{}");
+      if (typeof body.message === "string") message = body.message;
+    } catch {
+      if (execution.responseBody) message = execution.responseBody;
+    }
+    throw new Error(message);
+  }
+  try {
+    return JSON.parse(execution.responseBody || "{}") as {
+      caption?: string;
+      alternativeCaption?: string;
+      hashtags: string[];
+    };
+  } catch {
+    throw new Error("AI Function returned an invalid response.");
+  }
+}
+
 export async function updateMessage(messageId: string, senderProfileId: string, content: string) {
   const execution = await functions.createExecution(
     appwriteConfig.messageFunctionId,
@@ -1070,7 +1255,11 @@ export async function updateMessage(messageId: string, senderProfileId: string, 
     "POST",
     { "Content-Type": "application/json" }
   );
-  if (execution.responseStatusCode < 200 || execution.responseStatusCode >= 300) {
+  if (
+    execution.status === "failed" ||
+    execution.responseStatusCode < 200 ||
+    execution.responseStatusCode >= 300
+  ) {
     throw new Error(execution.responseBody || "Message edit failed.");
   }
   return execution;
@@ -1085,7 +1274,11 @@ export async function deleteMessage(messageId: string, senderProfileId: string) 
     "POST",
     { "Content-Type": "application/json" }
   );
-  if (execution.responseStatusCode < 200 || execution.responseStatusCode >= 300) {
+  if (
+    execution.status === "failed" ||
+    execution.responseStatusCode < 200 ||
+    execution.responseStatusCode >= 300
+  ) {
     throw new Error(execution.responseBody || "Message deletion failed.");
   }
   return execution;

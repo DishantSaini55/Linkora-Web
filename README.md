@@ -93,6 +93,18 @@ Populate `.env.local` with the public identifiers from your Appwrite project. Ne
 | `VITE_APPWRITE_DRAFTS_COLLECTION_ID` | Cloud post drafts table ID |
 | `VITE_APPWRITE_PREFERENCES_COLLECTION_ID` | Optional cross-device notification preferences table ID |
 | `VITE_APPWRITE_MESSAGES_COLLECTION_ID` | Optional private Messages table ID |
+| `VITE_APPWRITE_PRESENCE_COLLECTION_ID` | Optional Presence table ID for cross-device online and typing status |
+
+The Messages table should include `senderAccountId` (string), `attachmentId`
+(optional string), and `attachmentUrl` (optional string). The Function also
+needs `APPWRITE_USER_COLLECTION_ID` so older messages can be edited or deleted
+after authorization is verified against the sender's profile.
+
+Create a Presence table with document ID equal to the profile ID and these
+attributes: `online` (boolean), `typingTo` (optional string), and `updatedAt`
+(string). Allow authenticated users to read Presence documents. The owning
+user must be allowed to update and delete their own document. Add the table ID
+to `.env.local`, then restart Vite.
 | `VITE_APPWRITE_MESSAGE_FUNCTION_ID` | Optional Function ID used to create private messages; defaults to the notification Function ID |
 
 The Users collection should also include these optional attributes:
@@ -214,6 +226,24 @@ account IDs and add `APPWRITE_REPORTS_COLLECTION_ID`,
 `APPWRITE_POST_COLLECTION_ID`, and `APPWRITE_COMMENTS_COLLECTION_ID` to the
 Function environment. Report updates and reported-content deletion are then
 authorized server-side.
+
+Comment creation and editing also go through this Function. The server applies
+basic abusive, hateful, and self-harm language checks before writing a comment;
+blocked content returns a moderation message and is not stored. Make sure the
+Function API key has create and update access to the Comments collection and
+read access to the Users collection.
+
+To add project-specific blocked words or phrases, add
+`BLOCKED_COMMENT_TERMS=term-one,term two` to the Function variables and
+redeploy. Avoid blocking ordinary words that may appear in legitimate
+conversation.
+
+The same Function can provide the optional AI caption assistant. Gemini is the
+default provider: configure `GEMINI_API_KEY` and optionally `GEMINI_MODEL` in
+the Function environment. Set `AI_PROVIDER=openai` only when using the
+OpenAI-compatible fallback with `AI_API_KEY`. Never put provider keys in
+`.env.local`. The post composer calls the Function for `generate-caption` and
+`generate-hashtags`, and users must insert and submit generated text manually.
 
 ### Recommended indexes
 
