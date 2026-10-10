@@ -8,6 +8,7 @@ process.env.APPWRITE_USER_COLLECTION_ID = "users";
 const {
   default: functionHandler,
   getToxicCommentReason,
+  isValidAttachment,
   isModerator,
   normalizeCommentText,
 } = await import("../src/main.js");
@@ -85,6 +86,12 @@ test("blocks custom Function terms", () => {
 
 test("allows ordinary comments", () => {
   assert.equal(getToxicCommentReason("Great post about cricket!"), null);
+});
+
+test("validates message attachment metadata", () => {
+  assert.equal(isValidAttachment("file_123", "https://example.com/file"), true);
+  assert.equal(isValidAttachment("file/123", "https://example.com/file"), false);
+  assert.equal(isValidAttachment("file_123", "javascript:alert(1)"), false);
 });
 
 test("supports the plural moderator variable", () => {
@@ -316,6 +323,28 @@ test("sends a message with the authenticated actor as sender", async () => {
     'update("user:user-1")',
     'update("user:user-2")',
   ]);
+});
+
+test("rejects invalid message attachment metadata before Appwrite", async () => {
+  let requestCount = 0;
+  globalThis.fetch = async () => {
+    requestCount += 1;
+    return new Response(JSON.stringify({ $id: "unexpected" }), { status: 201 });
+  };
+
+  const result = await invokeFunction({
+    action: "send-message",
+    recipient: "user-2",
+    recipientProfileId: "profile-2",
+    senderProfileId: "profile-1",
+    content: "",
+    attachmentId: "file/with-invalid-character",
+    attachmentUrl: "https://example.com/file",
+  });
+
+  assert.equal(result.status, 400);
+  assert.equal(result.body.message, "Invalid message attachment.");
+  assert.equal(requestCount, 0);
 });
 
 test("rejects editing a message owned by another account", async () => {

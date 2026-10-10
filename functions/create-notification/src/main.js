@@ -142,6 +142,22 @@ function clearRateLimitState() {
   rateLimitBuckets.clear();
 }
 
+function isValidAttachment(attachmentId, attachmentUrl) {
+  if (typeof attachmentId !== "string" || !/^[A-Za-z0-9._-]{1,100}$/.test(attachmentId)) {
+    return false;
+  }
+  if (attachmentUrl === undefined || attachmentUrl === "") return true;
+  if (typeof attachmentUrl !== "string" || attachmentUrl.length > 2048) {
+    return false;
+  }
+  try {
+    const url = new URL(attachmentUrl);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 async function appwriteRequest(path, options = {}) {
   const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
   const response = await fetch(`${endpoint}${path}`, {
@@ -614,6 +630,12 @@ export default async ({ req, res, error }) => {
       if (!content.trim() && !body.attachmentId) {
         return res.json({ message: "Message text or an attachment is required." }, 400);
       }
+      if (
+        body.attachmentId !== undefined &&
+        !isValidAttachment(body.attachmentId, body.attachmentUrl)
+      ) {
+        return res.json({ message: "Invalid message attachment." }, 400);
+      }
       const retryAfterSeconds = checkRateLimit(actor, "message");
       if (retryAfterSeconds) {
         return res.json(
@@ -859,6 +881,7 @@ export {
   checkRateLimit,
   clearRateLimitState,
   getToxicCommentReason,
+  isValidAttachment,
   isModerator,
   normalizeCommentText,
 };

@@ -49,6 +49,9 @@ frontend `.env.local` to the deployed Function ID.
 This Function also accepts the `send-message` action used by the messaging
 feature. Set `VITE_APPWRITE_MESSAGE_FUNCTION_ID` to this same Function ID, or
 leave it empty and the frontend will use the notification Function ID.
+Message attachments are validated server-side: IDs must be valid Appwrite-style
+identifiers, and attachment URLs must be HTTP(S) URLs no longer than 2048
+characters.
 
 It also accepts `generate-caption` and `generate-hashtags` actions. Gemini is
 the default provider. AI keys must remain in the Function environment and
