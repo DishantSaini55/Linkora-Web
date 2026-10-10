@@ -31,12 +31,24 @@ const StoriesTray = ({ stories }: { stories: StoryWithSegments[] }) => {
               onClick={() => setSelectedIndex(index)}
               aria-label={`Open Story from ${story.owner}`}>
               <span className="rounded-full bg-gradient-to-tr from-primary-500 to-cyan-300 p-[2px]">
-                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-dark-1 text-center text-[10px] text-light-2">
-                  {story.owner.slice(0, 8)}
+                <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-dark-1 text-center text-[10px] text-light-2">
+                  {story.ownerProfile?.imageUrl ? (
+                    <img
+                      src={story.ownerProfile.imageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    story.ownerProfile?.username ||
+                    story.ownerProfile?.name ||
+                    story.owner.slice(0, 8)
+                  )}
                 </span>
               </span>
               <span className="small-medium max-w-[72px] truncate text-light-2">
-                {story.owner}
+                {story.ownerProfile?.username ||
+                  story.ownerProfile?.name ||
+                  story.owner}
               </span>
             </button>
           ))}

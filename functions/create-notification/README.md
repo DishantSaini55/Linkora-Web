@@ -27,6 +27,8 @@ Add these variables to the Function's environment:
 - `APPWRITE_STORY_SEGMENTS_COLLECTION_ID`: the ordered StorySegments table ID
 - `APPWRITE_STORY_VIEWS_COLLECTION_ID`: the StoryViews table ID
 - `APPWRITE_STORAGE_ID`: the Storage bucket used for owner-bound Story media
+- `APPWRITE_FOLLOWS_COLLECTION_ID`: the Follows table used for follower-only
+  Story authorization
 - `MODERATOR_ACCOUNT_IDS`: comma-separated Appwrite Auth account IDs allowed to moderate.
   `MODERATOR_ACCOUNT_ID` is also accepted for a single moderator.
 - `AI_PROVIDER`: `gemini` (default) or `openai`
@@ -85,11 +87,11 @@ video segments are limited to 60 seconds, and expiration is calculated
 server-side for a maximum of 24 hours. Failed segment creation rolls back the
 partially created Story records.
 
-The `list-stories` action returns non-expired public Stories and the
-authenticated user's own Stories. `followers` Stories are intentionally
-excluded until follow-relationship authorization is enabled. The
-`mark-story-viewed` action deduplicates view records per viewer, Story, and
-segment.
+The `list-stories` action returns non-expired public Stories, the
+authenticated user's own Stories, and follower-only Stories only when the
+authenticated profile follows the creator. It also returns sanitized creator
+profile metadata. The `mark-story-viewed` action deduplicates view records per
+viewer, Story, and segment.
 
 Message creation and editing use the same moderation rules. Blocked messages
 return HTTP 422 with code `MESSAGE_MODERATION_BLOCKED`.

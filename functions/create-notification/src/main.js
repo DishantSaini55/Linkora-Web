@@ -558,7 +558,8 @@ export default async ({ req, res, error }) => {
     if (body.action === "list-stories") {
       if (
         !process.env.APPWRITE_STORIES_COLLECTION_ID ||
-        !process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID
+        !process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID ||
+        !usersCollectionId
       ) {
         throw new Error(
           "Stories collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_SEGMENTS_COLLECTION_ID."
@@ -583,11 +584,56 @@ export default async ({ req, res, error }) => {
         `${databasePath}/collections/${process.env.APPWRITE_STORIES_COLLECTION_ID}` +
           `/documents?queries[]=${activeQuery}&queries[]=${expiryQuery}&limit=100`
       );
-      const visibleStories = (result.documents || []).filter(
-        (story) => story.owner === actor || story.privacy === "public"
+      const profileQuery = encodeURIComponent(
+        JSON.stringify({ method: "equal", attribute: "accountId", values: [actor] })
       );
+      const actorProfiles = await appwriteRequest(
+        `${databasePath}/collections/${usersCollectionId}/documents?queries[]=${profileQuery}&limit=1`
+      );
+      const actorProfileId = actorProfiles.documents?.[0]?.$id;
       const stories = await Promise.all(
-        visibleStories.map(async (story) => {
+        (result.documents || []).map(async (story) => {
+          const ownerQuery = encodeURIComponent(
+            JSON.stringify({
+              method: "equal",
+              attribute: "accountId",
+              values: [story.owner],
+            })
+          );
+          const ownerProfiles = await appwriteRequest(
+            `${databasePath}/collections/${usersCollectionId}/documents?queries[]=${ownerQuery}&limit=1`
+          );
+          const ownerProfile = ownerProfiles.documents?.[0];
+          let visible =
+            story.owner === actor || story.privacy === "public";
+          if (
+            !visible &&
+            story.privacy === "followers" &&
+            process.env.APPWRITE_FOLLOWS_COLLECTION_ID &&
+            actorProfileId &&
+            ownerProfile?.$id
+          ) {
+            const followerQuery = encodeURIComponent(
+              JSON.stringify({
+                method: "equal",
+                attribute: "follower",
+                values: [actorProfileId],
+              })
+            );
+            const followingQuery = encodeURIComponent(
+              JSON.stringify({
+                method: "equal",
+                attribute: "following",
+                values: [ownerProfile.$id],
+              })
+            );
+            const follows = await appwriteRequest(
+              `${databasePath}/collections/${process.env.APPWRITE_FOLLOWS_COLLECTION_ID}/documents` +
+                `?queries[]=${followerQuery}&queries[]=${followingQuery}&limit=1`
+            );
+            visible = Boolean(follows.documents?.length);
+          }
+          if (!visible) return null;
           const storyQuery = encodeURIComponent(
             JSON.stringify({
               method: "equal",
@@ -601,13 +647,22 @@ export default async ({ req, res, error }) => {
           );
           return {
             ...story,
+            ownerProfile: ownerProfile
+              ? {
+                  $id: ownerProfile.$id,
+                  name: ownerProfile.name,
+                  username: ownerProfile.username,
+                  imageUrl: ownerProfile.imageUrl,
+                  imageId: ownerProfile.imageId,
+                }
+              : null,
             segments: Array.isArray(segments.documents)
               ? segments.documents.sort((left, right) => left.order - right.order)
               : [],
           };
         })
       );
-      return res.json({ stories });
+      return res.json({ stories: stories.filter(Boolean) });
     }
     if (body.action === "mark-story-viewed") {
       if (
@@ -629,11 +684,58 @@ export default async ({ req, res, error }) => {
         `${databasePath}/collections/${process.env.APPWRITE_STORIES_COLLECTION_ID}` +
           `/documents/${encodeURIComponent(body.storyId)}`
       );
+      if (new Date(story.expiresAt).getTime() <= Date.now()) {
+        return res.json({ message: "This Story has expired." }, 410);
+      }
+      let canView =
+        story.owner === actor || story.privacy === "public";
       if (
-        story.owner !== actor &&
-        (story.privacy !== "public" ||
-          new Date(story.expiresAt).getTime() <= Date.now())
+        !canView &&
+        story.privacy === "followers" &&
+        process.env.APPWRITE_FOLLOWS_COLLECTION_ID &&
+        usersCollectionId
       ) {
+        const actorProfileQuery = encodeURIComponent(
+          JSON.stringify({ method: "equal", attribute: "accountId", values: [actor] })
+        );
+        const ownerProfileQuery = encodeURIComponent(
+          JSON.stringify({
+            method: "equal",
+            attribute: "accountId",
+            values: [story.owner],
+          })
+        );
+        const [actorProfiles, ownerProfiles] = await Promise.all([
+          appwriteRequest(
+            `${databasePath}/collections/${usersCollectionId}/documents?queries[]=${actorProfileQuery}&limit=1`
+          ),
+          appwriteRequest(
+            `${databasePath}/collections/${usersCollectionId}/documents?queries[]=${ownerProfileQuery}&limit=1`
+          ),
+        ]);
+        const followerQuery = encodeURIComponent(
+          JSON.stringify({
+            method: "equal",
+            attribute: "follower",
+            values: [actorProfiles.documents?.[0]?.$id],
+          })
+        );
+        const followingQuery = encodeURIComponent(
+          JSON.stringify({
+            method: "equal",
+            attribute: "following",
+            values: [ownerProfiles.documents?.[0]?.$id],
+          })
+        );
+        if (actorProfiles.documents?.[0]?.$id && ownerProfiles.documents?.[0]?.$id) {
+          const follows = await appwriteRequest(
+            `${databasePath}/collections/${process.env.APPWRITE_FOLLOWS_COLLECTION_ID}/documents` +
+              `?queries[]=${followerQuery}&queries[]=${followingQuery}&limit=1`
+          );
+          canView = Boolean(follows.documents?.length);
+        }
+      }
+      if (!canView) {
         return res.json({ message: "This Story is not available." }, 403);
       }
       const viewQuery = [

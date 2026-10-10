@@ -26,6 +26,7 @@ const originalEnvironment = {
   storySegmentsCollectionId: process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID,
   storyViewsCollectionId: process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID,
   storageId: process.env.APPWRITE_STORAGE_ID,
+  followsCollectionId: process.env.APPWRITE_FOLLOWS_COLLECTION_ID,
   safetyCollectionId: process.env.APPWRITE_SAFETY_COLLECTION_ID,
 };
 const originalFetch = globalThis.fetch;
@@ -98,6 +99,12 @@ afterEach(() => {
     delete process.env.APPWRITE_STORAGE_ID;
   } else {
     process.env.APPWRITE_STORAGE_ID = originalEnvironment.storageId;
+  }
+  if (originalEnvironment.followsCollectionId === undefined) {
+    delete process.env.APPWRITE_FOLLOWS_COLLECTION_ID;
+  } else {
+    process.env.APPWRITE_FOLLOWS_COLLECTION_ID =
+      originalEnvironment.followsCollectionId;
   }
   if (originalEnvironment.safetyCollectionId === undefined) {
     delete process.env.APPWRITE_SAFETY_COLLECTION_ID;
@@ -414,6 +421,7 @@ test("rejects Story media without authenticated ownership", async () => {
 test("lists only active public and own Stories with ordered segments", async () => {
   process.env.APPWRITE_STORIES_COLLECTION_ID = "stories";
   process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID = "story-segments";
+  process.env.APPWRITE_FOLLOWS_COLLECTION_ID = "follows";
   globalThis.fetch = async (url) => {
     if (String(url).includes("/collections/stories/documents")) {
       return new Response(
@@ -441,6 +449,31 @@ test("lists only active public and own Stories with ordered segments", async () 
         }),
         { status: 200 }
       );
+    }
+    if (String(url).includes("/collections/users/documents")) {
+      const ownerProfile =
+        String(url).includes("another-user")
+          ? {
+              $id: "profile-2",
+              accountId: "another-user",
+              username: "creator",
+              name: "Creator",
+            }
+          : {
+              $id: "profile-1",
+              accountId: "user-1",
+              username: "viewer",
+              name: "Viewer",
+            };
+      return new Response(
+        JSON.stringify({
+          documents: [ownerProfile],
+        }),
+        { status: 200 }
+      );
+    }
+    if (String(url).includes("/collections/follows/documents")) {
+      return new Response(JSON.stringify({ documents: [] }), { status: 200 });
     }
     return new Response(
       JSON.stringify({
