@@ -40,6 +40,7 @@ Add these variables to the Function's environment:
 - `RATE_LIMIT_AI_MAX`: optional AI requests per actor per window (default `10`)
 - `RATE_LIMIT_COMMENT_MAX`: optional comment requests per actor per window (default `30`)
 - `RATE_LIMIT_MESSAGE_MAX`: optional message requests per actor per window (default `60`)
+- `RATE_LIMIT_NOTIFICATION_MAX`: optional notification requests per actor per window (default `120`)
 - `RATE_LIMIT_WINDOW_MS`: optional rate-limit window in milliseconds (default `60000`)
 
 Allow authenticated users to execute the Function, but do not expose the API

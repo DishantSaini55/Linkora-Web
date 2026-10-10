@@ -99,13 +99,16 @@ function getRateLimitConfig(action) {
     ai: 10,
     comment: 30,
     message: 60,
+    notification: 120,
   };
   const variable =
     action === "ai"
       ? "RATE_LIMIT_AI_MAX"
       : action === "comment"
         ? "RATE_LIMIT_COMMENT_MAX"
-        : "RATE_LIMIT_MESSAGE_MAX";
+        : action === "message"
+          ? "RATE_LIMIT_MESSAGE_MAX"
+          : "RATE_LIMIT_NOTIFICATION_MAX";
   const configured = Number.parseInt(process.env[variable] || "", 10);
   const maximum = Number.isFinite(configured) && configured > 0
     ? configured
@@ -918,6 +921,17 @@ export default async ({ req, res, error }) => {
 
     if (requestedActor !== actor) {
       return res.json({ message: "The actor does not match the session." }, 403);
+    }
+    const retryAfterSeconds = checkRateLimit(actor, "notification");
+    if (retryAfterSeconds) {
+      return res.json(
+        {
+          code: "RATE_LIMITED",
+          message: "Notification rate limit exceeded. Please try again later.",
+          retryAfterSeconds,
+        },
+        429
+      );
     }
     if (!process.env.APPWRITE_NOTIFICATION_COLLECTION_ID) {
       throw new Error(

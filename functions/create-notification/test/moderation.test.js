@@ -18,6 +18,8 @@ const originalEnvironment = {
   moderatorIds: process.env.MODERATOR_ACCOUNT_IDS,
   moderatorId: process.env.MODERATOR_ACCOUNT_ID,
   rateLimitCommentMax: process.env.RATE_LIMIT_COMMENT_MAX,
+  rateLimitNotificationMax: process.env.RATE_LIMIT_NOTIFICATION_MAX,
+  notificationCollectionId: process.env.APPWRITE_NOTIFICATION_COLLECTION_ID,
   safetyCollectionId: process.env.APPWRITE_SAFETY_COLLECTION_ID,
 };
 const originalFetch = globalThis.fetch;
@@ -43,6 +45,18 @@ afterEach(() => {
     delete process.env.RATE_LIMIT_COMMENT_MAX;
   } else {
     process.env.RATE_LIMIT_COMMENT_MAX = originalEnvironment.rateLimitCommentMax;
+  }
+  if (originalEnvironment.rateLimitNotificationMax === undefined) {
+    delete process.env.RATE_LIMIT_NOTIFICATION_MAX;
+  } else {
+    process.env.RATE_LIMIT_NOTIFICATION_MAX =
+      originalEnvironment.rateLimitNotificationMax;
+  }
+  if (originalEnvironment.notificationCollectionId === undefined) {
+    delete process.env.APPWRITE_NOTIFICATION_COLLECTION_ID;
+  } else {
+    process.env.APPWRITE_NOTIFICATION_COLLECTION_ID =
+      originalEnvironment.notificationCollectionId;
   }
   if (originalEnvironment.safetyCollectionId === undefined) {
     delete process.env.APPWRITE_SAFETY_COLLECTION_ID;
@@ -207,6 +221,32 @@ test("rejects notification creation without notification configuration", async (
   });
   assert.equal(result.status, 500);
   assert.match(result.body.message, /Notifications collection is not configured/);
+});
+
+test("rate-limits notification creation per authenticated actor", async () => {
+  process.env.RATE_LIMIT_NOTIFICATION_MAX = "1";
+  process.env.APPWRITE_NOTIFICATION_COLLECTION_ID = "notifications";
+  let requestCount = 0;
+  globalThis.fetch = async () => {
+    requestCount += 1;
+    return new Response(JSON.stringify({ $id: "notification-1" }), {
+      status: 201,
+    });
+  };
+
+  const payload = {
+    recipient: "user-2",
+    actor: "notification-user",
+    type: "like",
+    post: "post-1",
+  };
+  const first = await invokeFunction(payload, "notification-user");
+  const second = await invokeFunction(payload, "notification-user");
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 429);
+  assert.equal(second.body.code, "RATE_LIMITED");
+  assert.equal(requestCount, 1);
 });
 
 test("creates a moderated comment through Appwrite", async () => {
