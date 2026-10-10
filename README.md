@@ -94,6 +94,7 @@ Populate `.env.local` with the public identifiers from your Appwrite project. Ne
 | `VITE_APPWRITE_PREFERENCES_COLLECTION_ID` | Optional cross-device notification preferences table ID |
 | `VITE_APPWRITE_MESSAGES_COLLECTION_ID` | Optional private Messages table ID |
 | `VITE_APPWRITE_PRESENCE_COLLECTION_ID` | Optional Presence table ID for cross-device online and typing status |
+| `VITE_APPWRITE_INTERACTION_EVENTS_COLLECTION_ID` | Optional InteractionEvents table ID for feed analytics and personalization |
 
 The Messages table should include `senderAccountId` (string), `attachmentId`
 (optional string), and `attachmentUrl` (optional string). The Function also
@@ -177,6 +178,11 @@ document-level read permissions for the reporter. The notification type field
 must accept `like`, `save`, `follow`, and `comment`.
 
 Optional advanced tables:
+
+- **InteractionEvents**: `userAccountId`, `eventType`, `postId`, `creatorId`,
+  and `createdAt`. Enable authenticated Create and private owner Read. The
+  client records impressions and likes/saves when this optional table is
+  configured.
 
 - **Safety**: `owner`, `target`, and `type` (`block` or `mute`). Enable
   authenticated Create, private Read, and owner Delete.

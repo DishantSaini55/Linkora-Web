@@ -15,6 +15,7 @@ import {
   isDraftsConfigured,
   isPreferencesConfigured,
   isMessagesConfigured,
+  isInteractionEventsConfigured,
   isMessageFunctionConfigured,
   isModerationFunctionConfigured,
 } from "./config";
@@ -524,6 +525,44 @@ export async function getFollowCounts(userId: string) {
     followers: followers.total,
     following: following.total,
   };
+}
+
+export async function getFollowingProfileIds(userId: string) {
+  if (!isFollowsConfigured || !userId) return [];
+
+  const result = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.followsCollectionId,
+    [Query.equal("follower", userId), Query.limit(100)]
+  );
+
+  return result.documents
+    .map((document) => document.following)
+    .filter((profileId): profileId is string => typeof profileId === "string");
+}
+
+export async function createInteractionEvent(event: {
+  userAccountId: string;
+  eventType: "impression" | "like" | "save" | "comment" | "follow";
+  postId: string;
+  creatorId?: string;
+}) {
+  if (!isInteractionEventsConfigured) return null;
+  if (!event.userAccountId || !event.postId) return null;
+
+  return databases.createDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.interactionEventsCollectionId,
+    ID.unique(),
+    {
+      userAccountId: event.userAccountId,
+      eventType: event.eventType,
+      postId: event.postId,
+      ...(event.creatorId ? { creatorId: event.creatorId } : {}),
+      createdAt: new Date().toISOString(),
+    },
+    [Permission.read(Role.user(event.userAccountId))]
+  );
 }
 
 export async function createFollow(

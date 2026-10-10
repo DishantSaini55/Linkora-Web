@@ -32,6 +32,8 @@ import {
   markNotificationsRead,
   getFollowRelationship,
   getFollowCounts,
+  getFollowingProfileIds,
+  createInteractionEvent,
   createFollow,
   deleteFollow,
   getComments,
@@ -154,6 +156,18 @@ export const useGetRecentPosts = () => {
     queryFn: getRecentPosts,
   });
 };
+
+export const useGetFollowingProfileIds = (userId?: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_FOLLOWING_PROFILE_IDS, userId],
+    queryFn: () => getFollowingProfileIds(userId || ""),
+    enabled: !!userId,
+  });
+
+export const useCreateInteractionEvent = () =>
+  useMutation({
+    mutationFn: createInteractionEvent,
+  });
 
 export const useCreatePost = () => {
   const queryClient = useQueryClient();

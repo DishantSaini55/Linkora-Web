@@ -15,6 +15,8 @@ export const appwriteConfig = {
   draftsCollectionId: import.meta.env.VITE_APPWRITE_DRAFTS_COLLECTION_ID,
   messagesCollectionId: import.meta.env.VITE_APPWRITE_MESSAGES_COLLECTION_ID,
   presenceCollectionId: import.meta.env.VITE_APPWRITE_PRESENCE_COLLECTION_ID,
+  interactionEventsCollectionId:
+    import.meta.env.VITE_APPWRITE_INTERACTION_EVENTS_COLLECTION_ID,
   preferencesCollectionId:
     import.meta.env.VITE_APPWRITE_PREFERENCES_COLLECTION_ID,
   notificationCollectionId:
@@ -72,6 +74,10 @@ export const isPreferencesConfigured =
 export const isMessagesConfigured =
   typeof appwriteConfig.messagesCollectionId === "string" &&
   appwriteConfig.messagesCollectionId.length > 0;
+
+export const isInteractionEventsConfigured =
+  typeof appwriteConfig.interactionEventsCollectionId === "string" &&
+  appwriteConfig.interactionEventsCollectionId.length > 0;
 
 export const isMessageFunctionConfigured =
   typeof appwriteConfig.messageFunctionId === "string" &&
