@@ -596,6 +596,15 @@ export const useCreateFollow = () => {
       followerAccountId: string;
     }) => createFollow(follower, following, followerAccountId),
     onSuccess: (_, variables) => {
+      if (variables.followerAccountId) {
+        createInteractionEvent({
+          userAccountId: variables.followerAccountId,
+          eventType: "follow",
+          targetId: variables.following,
+        }).catch((error) =>
+          console.error("Follow interaction tracking failed", error)
+        );
+      }
       queryClient.invalidateQueries({
         queryKey: [
           QUERY_KEYS.GET_FOLLOW_RELATIONSHIP,
@@ -663,6 +672,15 @@ export const useCreateComment = () => {
       authorAccountId: string;
     }) => createComment(postId, authorId, content, authorAccountId),
     onSuccess: (_, variables) => {
+      if (variables.authorAccountId) {
+        createInteractionEvent({
+          userAccountId: variables.authorAccountId,
+          eventType: "comment",
+          postId: variables.postId,
+        }).catch((error) =>
+          console.error("Comment interaction tracking failed", error)
+        );
+      }
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_COMMENTS, variables.postId],
       });
