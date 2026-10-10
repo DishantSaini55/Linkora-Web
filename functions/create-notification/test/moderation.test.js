@@ -18,6 +18,7 @@ const originalEnvironment = {
   moderatorIds: process.env.MODERATOR_ACCOUNT_IDS,
   moderatorId: process.env.MODERATOR_ACCOUNT_ID,
   rateLimitCommentMax: process.env.RATE_LIMIT_COMMENT_MAX,
+  safetyCollectionId: process.env.APPWRITE_SAFETY_COLLECTION_ID,
 };
 const originalFetch = globalThis.fetch;
 
@@ -42,6 +43,12 @@ afterEach(() => {
     delete process.env.RATE_LIMIT_COMMENT_MAX;
   } else {
     process.env.RATE_LIMIT_COMMENT_MAX = originalEnvironment.rateLimitCommentMax;
+  }
+  if (originalEnvironment.safetyCollectionId === undefined) {
+    delete process.env.APPWRITE_SAFETY_COLLECTION_ID;
+  } else {
+    process.env.APPWRITE_SAFETY_COLLECTION_ID =
+      originalEnvironment.safetyCollectionId;
   }
 });
 
@@ -299,6 +306,7 @@ test("rate-limits comment creation per authenticated actor", async () => {
 });
 
 test("sends a message with the authenticated actor as sender", async () => {
+  process.env.APPWRITE_SAFETY_COLLECTION_ID = "safety";
   const requests = [];
   globalThis.fetch = async (url, options = {}) => {
     requests.push({ url: String(url), options });
@@ -307,6 +315,9 @@ test("sends a message with the authenticated actor as sender", async () => {
     }
     if (String(url).includes("/collections/users/documents/profile-2")) {
       return new Response(JSON.stringify({ accountId: "user-2" }), { status: 200 });
+    }
+    if (String(url).includes("/collections/safety/documents")) {
+      return new Response(JSON.stringify({ documents: [] }), { status: 200 });
     }
     return new Response(
       JSON.stringify({ $id: "message-1", senderAccountId: "user-1" }),
@@ -368,6 +379,39 @@ test("rejects a spoofed sender profile before creating a message", async () => {
     if (String(url).includes("/collections/users/documents/profile-1")) {
       return new Response(JSON.stringify({ accountId: "different-user" }), {
         status: 200,
+      });
+
+      test("rejects messaging when either user has blocked the other", async () => {
+        process.env.APPWRITE_SAFETY_COLLECTION_ID = "safety";
+        let createRequestSeen = false;
+        globalThis.fetch = async (url, options = {}) => {
+          if (options.method === "POST") createRequestSeen = true;
+          if (String(url).includes("/collections/users/documents/profile-1")) {
+            return new Response(JSON.stringify({ accountId: "user-1" }), { status: 200 });
+          }
+          if (String(url).includes("/collections/users/documents/profile-2")) {
+            return new Response(JSON.stringify({ accountId: "user-2" }), { status: 200 });
+          }
+          return new Response(
+            JSON.stringify({ documents: [{ $id: "block-1", type: "block" }] }),
+            { status: 200 }
+          );
+        };
+
+        const result = await invokeFunction(
+          {
+            action: "send-message",
+            recipient: "user-2",
+            recipientProfileId: "profile-2",
+            senderProfileId: "profile-1",
+            content: "Hello",
+          },
+          "user-1"
+        );
+
+        assert.equal(result.status, 403);
+        assert.equal(result.body.code, "MESSAGE_BLOCKED");
+        assert.equal(createRequestSeen, false);
       });
     }
     return new Response(JSON.stringify({ accountId: "user-2" }), { status: 200 });

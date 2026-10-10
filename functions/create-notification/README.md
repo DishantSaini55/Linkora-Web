@@ -52,7 +52,9 @@ leave it empty and the frontend will use the notification Function ID.
 Message attachments are validated server-side: IDs must be valid Appwrite-style
 identifiers, and attachment URLs must be HTTP(S) URLs no longer than 2048
 characters. Message creation also verifies both profile IDs against the Users
-collection so clients cannot spoof either participant's account ID.
+collection so clients cannot spoof either participant's account ID. If
+`APPWRITE_SAFETY_COLLECTION_ID` is configured, the Function also rejects
+messages when either participant has blocked the other.
 
 It also accepts `generate-caption` and `generate-hashtags` actions. Gemini is
 the default provider. AI keys must remain in the Function environment and

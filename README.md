@@ -224,7 +224,9 @@ existing `functions/create-notification` Function after adding its message
 action, give it `APPWRITE_MESSAGES_COLLECTION_ID`, and set
 `VITE_APPWRITE_MESSAGE_FUNCTION_ID` to that Function ID. The Function also
 needs the same `APPWRITE_API_KEY` database document-create access used for
-notifications.
+notifications. Set `APPWRITE_SAFETY_COLLECTION_ID` on the Function to enforce
+server-side blocks for messaging; when configured, either participant blocking
+the other prevents new messages.
 
 The same Function protects moderation actions. Set
 `MODERATOR_ACCOUNT_IDS` to a comma-separated allowlist of Appwrite Auth

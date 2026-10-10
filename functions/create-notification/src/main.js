@@ -178,6 +178,23 @@ async function appwriteRequest(path, options = {}) {
   return text ? JSON.parse(text) : {};
 }
 
+async function hasSafetyBlock(databasePath, safetyCollectionId, owner, target) {
+  const query = encodeURIComponent(
+    JSON.stringify({ method: "equal", attribute: "owner", values: [owner] })
+  );
+  const targetQuery = encodeURIComponent(
+    JSON.stringify({ method: "equal", attribute: "target", values: [target] })
+  );
+  const typeQuery = encodeURIComponent(
+    JSON.stringify({ method: "equal", attribute: "type", values: ["block"] })
+  );
+  const result = await appwriteRequest(
+    `${databasePath}/collections/${safetyCollectionId}/documents` +
+      `?queries[]=${query}&queries[]=${targetQuery}&queries[]=${typeQuery}&limit=1`
+  );
+  return Array.isArray(result.documents) && result.documents.length > 0;
+}
+
 async function listGeminiModels(apiKey) {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`,
@@ -677,6 +694,29 @@ export default async ({ req, res, error }) => {
           { message: "The recipient profile does not match the account." },
           403
         );
+      }
+      const safetyCollectionId = process.env.APPWRITE_SAFETY_COLLECTION_ID;
+      if (safetyCollectionId) {
+        const [senderBlockedRecipient, recipientBlockedSender] = await Promise.all([
+          hasSafetyBlock(
+            databasePath,
+            safetyCollectionId,
+            senderProfileId,
+            recipientProfileId
+          ),
+          hasSafetyBlock(
+            databasePath,
+            safetyCollectionId,
+            recipientProfileId,
+            senderProfileId
+          ),
+        ]);
+        if (senderBlockedRecipient || recipientBlockedSender) {
+          return res.json(
+            { code: "MESSAGE_BLOCKED", message: "Messaging is unavailable between these users." },
+            403
+          );
+        }
       }
 
       const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
