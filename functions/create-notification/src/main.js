@@ -543,6 +543,11 @@ export default async ({ req, res, error }) => {
       if (!content.trim() && !body.attachmentId) {
         return res.json({ message: "Message text or an attachment is required." }, 400);
       }
+      if (!process.env.APPWRITE_MESSAGES_COLLECTION_ID) {
+        throw new Error(
+          "Messages collection is not configured. Set APPWRITE_MESSAGES_COLLECTION_ID."
+        );
+      }
 
       const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
       const response = await fetch(
@@ -593,6 +598,11 @@ export default async ({ req, res, error }) => {
     if (body.action === "edit-message" || body.action === "delete-message") {
       if (typeof body.messageId !== "string") {
         return res.json({ message: "A message ID is required." }, 400);
+      }
+      if (!process.env.APPWRITE_MESSAGES_COLLECTION_ID) {
+        throw new Error(
+          "Messages collection is not configured. Set APPWRITE_MESSAGES_COLLECTION_ID."
+        );
       }
       const path =
         `/databases/${process.env.APPWRITE_DATABASE_ID}` +

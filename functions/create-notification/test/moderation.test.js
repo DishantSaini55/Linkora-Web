@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
 process.env.APPWRITE_COMMENTS_COLLECTION_ID = "comments";
+process.env.APPWRITE_MESSAGES_COLLECTION_ID = "messages";
 process.env.APPWRITE_USER_COLLECTION_ID = "users";
 
 const {
@@ -253,4 +254,76 @@ test("rejects a non-owner without moderator access", async () => {
 
   assert.equal(result.status, 403);
   assert.match(result.body.message, /comment author or a moderator/);
+});
+
+test("sends a message with the authenticated actor as sender", async () => {
+  const requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url: String(url), options });
+    return new Response(
+      JSON.stringify({ $id: "message-1", senderAccountId: "user-1" }),
+      { status: 201 }
+    );
+  };
+
+  const result = await invokeFunction(
+    {
+      action: "send-message",
+      recipient: "user-2",
+      recipientProfileId: "profile-2",
+      senderProfileId: "profile-1",
+      content: "Hello",
+    },
+    "user-1"
+  );
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.senderAccountId, "user-1");
+  const payload = JSON.parse(requests[0].options.body);
+  assert.equal(payload.data.senderAccountId, "user-1");
+  assert.deepEqual(payload.permissions, [
+    'read("user:user-1")',
+    'read("user:user-2")',
+    'update("user:user-1")',
+    'update("user:user-2")',
+  ]);
+});
+
+test("rejects editing a message owned by another account", async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ senderAccountId: "user-2" }), { status: 200 });
+
+  const result = await invokeFunction(
+    {
+      action: "edit-message",
+      messageId: "message-1",
+      content: "Changed",
+    },
+    "user-1"
+  );
+
+  assert.equal(result.status, 403);
+  assert.equal(result.body.message, "Only the sender can modify this message.");
+});
+
+test("allows the message sender to delete their message", async () => {
+  const requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url: String(url), options });
+    if (options.method === "DELETE") {
+      return new Response(JSON.stringify({}), { status: 200 });
+    }
+    return new Response(JSON.stringify({ senderAccountId: "user-1" }), {
+      status: 200,
+    });
+  };
+
+  const result = await invokeFunction(
+    { action: "delete-message", messageId: "message-1" },
+    "user-1"
+  );
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, { deleted: true });
+  assert.equal(requests[1].options.method, "DELETE");
 });
