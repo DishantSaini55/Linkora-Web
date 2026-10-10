@@ -22,6 +22,7 @@ const StoriesViewer = ({
   const [storyIndex, setStoryIndex] = useState(initialStoryIndex);
   const [segmentIndex, setSegmentIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [muted, setMuted] = useState(false);
   const { mutate: markViewed } = useMarkStoryViewed();
   const story = stories[storyIndex];
   const segment = story?.segments[segmentIndex];
@@ -39,10 +40,24 @@ const StoriesViewer = ({
       return [];
     }
   }, [segment?.overlays]);
+  const music = useMemo(() => {
+    if (!segment?.music) return null;
+    if (typeof segment.music === "object") return segment.music;
+    try {
+      const parsed = JSON.parse(segment.music);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }, [segment?.music]);
 
   useEffect(() => {
     setSegmentIndex(0);
   }, [storyIndex]);
+
+  useEffect(() => {
+    setMuted(false);
+  }, [segmentIndex, storyIndex]);
 
   useEffect(() => {
     if (!story || !segment || paused) return;
@@ -109,6 +124,13 @@ const StoriesViewer = ({
           </button>
           <button
             type="button"
+            aria-label={muted ? "Unmute Story audio" : "Mute Story audio"}
+            className="rounded-full bg-black/50 px-3 py-2 text-xs text-white"
+            onClick={() => setMuted((current) => !current)}>
+            {muted ? "Unmute" : "Mute"}
+          </button>
+          <button
+            type="button"
             aria-label="Close Story viewer"
             className="rounded-full bg-black/50 p-2 text-white"
             onClick={onClose}>
@@ -149,6 +171,29 @@ const StoriesViewer = ({
               {overlay.value}
             </span>
           ))}
+          {music?.fileId && (
+            <audio
+              key={`${segment.$id}-${music.fileId}`}
+              src={getFileView(music.fileId).toString()}
+              autoPlay={music.autoplay && !paused}
+              muted={muted}
+              loop
+              controls={false}
+              ref={(audio) => {
+                if (audio) {
+                  audio.volume = Math.min(1, Math.max(0, Number(music.volume) || 1));
+                  audio.currentTime = Math.max(0, Number(music.startSeconds) || 0);
+                }
+              }}
+              onTimeUpdate={(event) => {
+                const endSeconds = Number(music.endSeconds);
+                const startSeconds = Math.max(0, Number(music.startSeconds) || 0);
+                if (Number.isFinite(endSeconds) && event.currentTarget.currentTime >= endSeconds) {
+                  event.currentTarget.currentTime = startSeconds;
+                }
+              }}
+            />
+          )}
         </div>
         <button
           type="button"

@@ -387,6 +387,150 @@ test("creates an owner-bound Story and ordered segment", async () => {
   assert.equal(storyPayload.permissions[1], 'update("user:user-1")');
 });
 
+test("creates a Story with owner-bound music metadata", async () => {
+  process.env.APPWRITE_STORIES_COLLECTION_ID = "stories";
+  process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID = "story-segments";
+  process.env.APPWRITE_STORAGE_ID = "media";
+  const requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url: String(url), options });
+    if (String(url).includes("/storage/buckets/") && String(url).includes("audio-1")) {
+      return new Response(
+        JSON.stringify({
+          $id: "audio-1",
+          mimeType: "audio/mpeg",
+          sizeOriginal: 2000,
+          $permissions: ['update("user:user-1")'],
+        }),
+        { status: 200 }
+      );
+    }
+    if (String(url).includes("/storage/buckets/")) {
+      return new Response(
+        JSON.stringify({
+          $id: "file-1",
+          mimeType: "image/webp",
+          sizeOriginal: 1000,
+          $permissions: ['update("user:user-1")'],
+        }),
+        { status: 200 }
+      );
+    }
+    if (String(url).includes("/collections/stories/documents")) {
+      return new Response(JSON.stringify({ $id: "story-1" }), { status: 201 });
+    }
+    return new Response(JSON.stringify({ $id: "segment-1" }), { status: 201 });
+  };
+
+  const result = await invokeFunction({
+    action: "create-story",
+    privacy: "public",
+    segments: [
+      {
+        order: 0,
+        mediaType: "image",
+        fileId: "file-1",
+        music: {
+          fileId: "audio-1",
+          title: "My track",
+          artist: "Me",
+          startSeconds: 5,
+          endSeconds: 35,
+          volume: 0.75,
+          autoplay: true,
+        },
+      },
+    ],
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(requests.length, 4);
+  const segmentPayload = JSON.parse(requests[3].options.body);
+  assert.deepEqual(JSON.parse(segmentPayload.data.music), {
+    fileId: "audio-1",
+    title: "My track",
+    artist: "Me",
+    startSeconds: 5,
+    endSeconds: 35,
+    volume: 0.75,
+    autoplay: true,
+  });
+});
+
+test("rejects Story music without authenticated ownership", async () => {
+  process.env.APPWRITE_STORIES_COLLECTION_ID = "stories";
+  process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID = "story-segments";
+  process.env.APPWRITE_STORAGE_ID = "media";
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("audio-1")) {
+      return new Response(
+        JSON.stringify({
+          mimeType: "audio/mpeg",
+          sizeOriginal: 1000,
+          $permissions: ['update("user:another-user")'],
+        }),
+        { status: 200 }
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        mimeType: "image/webp",
+        sizeOriginal: 1000,
+        $permissions: ['update("user:user-1")'],
+      }),
+      { status: 200 }
+    );
+  };
+
+  const result = await invokeFunction({
+    action: "create-story",
+    privacy: "public",
+    segments: [
+      {
+        order: 0,
+        mediaType: "image",
+        fileId: "file-1",
+        music: {
+          fileId: "audio-1",
+          title: "Not mine",
+          startSeconds: 0,
+          endSeconds: 10,
+          volume: 1,
+          autoplay: false,
+        },
+      },
+    ],
+  });
+
+  assert.equal(result.status, 403);
+  assert.equal(result.body.code, "STORY_MUSIC_FILE_NOT_OWNED");
+});
+
+test("rejects Story music ranges longer than one minute", async () => {
+  const result = await invokeFunction({
+    action: "create-story",
+    privacy: "public",
+    segments: [
+      {
+        order: 0,
+        mediaType: "image",
+        fileId: "file-1",
+        music: {
+          fileId: "audio-1",
+          title: "Too long",
+          startSeconds: 0,
+          endSeconds: 61,
+          volume: 1,
+          autoplay: false,
+        },
+      },
+    ],
+  });
+
+  assert.equal(result.status, 400);
+  assert.equal(result.body.message, "Invalid Story payload.");
+});
+
 test("rejects Story media without authenticated ownership", async () => {
   process.env.APPWRITE_STORIES_COLLECTION_ID = "stories";
   process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID = "story-segments";

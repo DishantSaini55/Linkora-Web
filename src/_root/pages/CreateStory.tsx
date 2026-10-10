@@ -7,6 +7,7 @@ import { useUserContext } from "@/context/AuthContext";
 import {
   createStory,
   deleteFile,
+  uploadStoryAudioFile,
   uploadStoryMediaFile,
 } from "@/lib/appwrite/api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,6 +20,12 @@ type DraftSegment = {
   mediaType: "image" | "video";
   durationSeconds?: number;
   overlays: StoryOverlay[];
+  musicFile?: File;
+  musicTitle?: string;
+  musicArtist?: string;
+  musicStartSeconds?: number;
+  musicEndSeconds?: number;
+  musicVolume?: number;
 };
 
 const MAX_SEGMENTS = 10;
@@ -140,6 +147,10 @@ const CreateStory = () => {
       for (const [index, segment] of segments.entries()) {
         const uploaded = await uploadStoryMediaFile(segment.file, user.accountId);
         uploadedIds.push(uploaded.$id);
+        const musicFileId = segment.musicFile
+          ? (await uploadStoryAudioFile(segment.musicFile, user.accountId)).$id
+          : undefined;
+        if (musicFileId) uploadedIds.push(musicFileId);
         uploadedSegments.push({
           order: index,
           mediaType: segment.mediaType,
@@ -148,6 +159,22 @@ const CreateStory = () => {
             ? { durationSeconds: segment.durationSeconds }
             : {}),
           overlays: segment.overlays,
+          ...(musicFileId
+            ? {
+                music: {
+                  source: "user-upload" as const,
+                  fileId: musicFileId,
+                  title: segment.musicTitle?.trim() || segment.musicFile?.name || "Original audio",
+                  artist: segment.musicArtist?.trim() || "",
+                  startSeconds: segment.musicStartSeconds || 0,
+                  endSeconds:
+                    segment.musicEndSeconds ||
+                    Math.min((segment.musicStartSeconds || 0) + 15, 60),
+                  volume: segment.musicVolume ?? 1,
+                  autoplay: true,
+                },
+              }
+            : {}),
         });
       }
       await createStory({ privacy, segments: uploadedSegments });
@@ -308,6 +335,90 @@ const CreateStory = () => {
                   </Button>
                 ))}
               </div>
+            </div>
+          )}
+          {segments[selectedIndex] && (
+            <div className="mt-4 rounded-xl bg-dark-3 p-4">
+              <p className="small-semibold text-light-2">User-owned audio</p>
+              <input
+                type="file"
+                accept="audio/*"
+                className="small-regular mt-3 w-full text-light-3"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  if (!file.type.startsWith("audio/") || file.size > 20 * 1024 * 1024) {
+                    setError("Choose an audio file smaller than 20 MB.");
+                    return;
+                  }
+                  setSegments((current) =>
+                    current.map((segment, index) =>
+                      index === selectedIndex
+                        ? {
+                            ...segment,
+                            musicFile: file,
+                            musicTitle: file.name.replace(/\.[^.]+$/, ""),
+                            musicStartSeconds: 0,
+                            musicEndSeconds: 15,
+                            musicVolume: 1,
+                          }
+                        : segment
+                    )
+                  );
+                  event.currentTarget.value = "";
+                }}
+              />
+              {segments[selectedIndex].musicFile && (
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <input
+                    className="shad-input"
+                    value={segments[selectedIndex].musicTitle || ""}
+                    onChange={(event) =>
+                      setSegments((current) =>
+                        current.map((segment, index) =>
+                          index === selectedIndex
+                            ? { ...segment, musicTitle: event.target.value }
+                            : segment
+                        )
+                      )
+                    }
+                    placeholder="Track title"
+                  />
+                  <input
+                    className="shad-input"
+                    value={segments[selectedIndex].musicArtist || ""}
+                    onChange={(event) =>
+                      setSegments((current) =>
+                        current.map((segment, index) =>
+                          index === selectedIndex
+                            ? { ...segment, musicArtist: event.target.value }
+                            : segment
+                        )
+                      )
+                    }
+                    placeholder="Artist (optional)"
+                  />
+                  <label className="small-regular flex items-center gap-2 text-light-3">
+                    Volume
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={segments[selectedIndex].musicVolume ?? 1}
+                      onChange={(event) =>
+                        setSegments((current) =>
+                          current.map((segment, index) =>
+                            index === selectedIndex
+                              ? { ...segment, musicVolume: Number(event.target.value) }
+                              : segment
+                          )
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+              )}
             </div>
           )}
           <label className="mt-6 flex flex-col gap-2">

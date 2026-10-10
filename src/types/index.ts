@@ -129,5 +129,6 @@ export type INewStory = {
     fileId: string;
     durationSeconds?: number;
     overlays?: StoryOverlay[];
+    music?: StoryMusic;
   }>;
 };

@@ -222,6 +222,23 @@ export async function uploadStoryMediaFile(file: File, accountId: string) {
   );
 }
 
+export async function uploadStoryAudioFile(file: File, accountId: string) {
+  if (!file.type.startsWith("audio/") || file.size > 20 * 1024 * 1024) {
+    throw new Error("Story audio must be an audio file smaller than 20 MB.");
+  }
+
+  return storage.createFile(
+    appwriteConfig.storageId,
+    ID.unique(),
+    file,
+    [
+      Permission.read(Role.users()),
+      Permission.update(Role.user(accountId)),
+      Permission.delete(Role.user(accountId)),
+    ]
+  );
+}
+
 // ============================== GET FILE URL
 export function getFilePreview(fileId: string, width = 2000, height = 2000) {
   return storage.getFilePreview(

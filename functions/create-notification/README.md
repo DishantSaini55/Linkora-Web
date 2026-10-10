@@ -93,6 +93,11 @@ authenticated profile follows the creator. It also returns sanitized creator
 profile metadata. The `mark-story-viewed` action deduplicates view records per
 viewer, Story, and segment.
 
+Story audio is user-owned only. Audio files are limited to 20 MB, must carry
+the authenticated user's Storage permission, and are stored as metadata
+references with a bounded selected segment; the Function does not provide a
+commercial music catalog or download third-party tracks.
+
 Message creation and editing use the same moderation rules. Blocked messages
 return HTTP 422 with code `MESSAGE_MODERATION_BLOCKED`.
 

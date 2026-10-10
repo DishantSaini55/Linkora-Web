@@ -452,6 +452,25 @@ export default async ({ req, res, error }) => {
                       overlay.rotation < -180 ||
                       overlay.rotation > 180
                   ))) ||
+              (segment.music !== undefined &&
+                (!segment.music ||
+                  typeof segment.music.fileId !== "string" ||
+                  !/^[A-Za-z0-9._-]{1,100}$/.test(segment.music.fileId) ||
+                  typeof segment.music.title !== "string" ||
+                  !segment.music.title.trim() ||
+                  segment.music.title.length > 120 ||
+                  (segment.music.artist !== undefined &&
+                    (typeof segment.music.artist !== "string" ||
+                      segment.music.artist.length > 120)) ||
+                  typeof segment.music.startSeconds !== "number" ||
+                  typeof segment.music.endSeconds !== "number" ||
+                  segment.music.startSeconds < 0 ||
+                  segment.music.endSeconds <= segment.music.startSeconds ||
+                  segment.music.endSeconds - segment.music.startSeconds > 60 ||
+                  typeof segment.music.volume !== "number" ||
+                  segment.music.volume < 0 ||
+                  segment.music.volume > 1 ||
+                  typeof segment.music.autoplay !== "boolean")) ||
               (segment.mediaType === "video" &&
                 (typeof segment.durationSeconds !== "number" ||
                   !Number.isFinite(segment.durationSeconds) ||
@@ -507,6 +526,30 @@ export default async ({ req, res, error }) => {
               403
             );
           }
+          if (segment.music) {
+            const musicFile = await appwriteRequest(
+              `${storagePath}/${encodeURIComponent(segment.music.fileId)}`
+            );
+            const musicPermissions = Array.isArray(musicFile.$permissions)
+              ? musicFile.$permissions
+              : [];
+            if (
+              !musicPermissions.includes(`update("user:${actor}")`) ||
+              typeof musicFile.mimeType !== "string" ||
+              !musicFile.mimeType.startsWith("audio/") ||
+              typeof musicFile.sizeOriginal !== "number" ||
+              musicFile.sizeOriginal > 20 * 1024 * 1024
+            ) {
+              return res.json(
+                {
+                  code: "STORY_MUSIC_FILE_NOT_OWNED",
+                  message:
+                    "The Story audio file is invalid or not owned by the authenticated user.",
+                },
+                403
+              );
+            }
+          }
         }
         const expiresAt = new Date(
           Date.now() + expiresInHours * 60 * 60 * 1000
@@ -549,6 +592,15 @@ export default async ({ req, res, error }) => {
                       fileId: segment.fileId,
                       ...(segment.overlays?.length
                         ? { overlays: JSON.stringify(segment.overlays) }
+                        : {}),
+                      ...(segment.music
+                        ? {
+                            music: JSON.stringify({
+                              ...segment.music,
+                              title: segment.music.title.trim(),
+                              artist: segment.music.artist?.trim() || "",
+                            }),
+                          }
                         : {}),
                       ...(segment.durationSeconds !== undefined
                         ? { durationSeconds: segment.durationSeconds }
