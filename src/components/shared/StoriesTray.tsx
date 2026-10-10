@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import StoriesViewer from "./StoriesViewer";
 import { StoryWithSegments } from "@/lib/appwrite/api";
 
 const StoriesTray = ({ stories }: { stories: StoryWithSegments[] }) => {
+  const navigate = useNavigate();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   return (
@@ -15,7 +17,7 @@ const StoriesTray = ({ stories }: { stories: StoryWithSegments[] }) => {
             type="button"
             className="flex min-w-[72px] flex-col items-center gap-2 text-light-2"
             aria-label="Add Story"
-            disabled>
+            onClick={() => navigate("/create-story")}>
             <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-primary-500">
               <Plus size={22} />
             </span>

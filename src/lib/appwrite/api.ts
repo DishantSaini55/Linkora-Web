@@ -811,18 +811,7 @@ async function executeModerationAction(payload: Record<string, unknown>) {
 }
 
 export async function createStory(story: INewStory) {
-  if (!isStoriesConfigured) {
-    throw new Error("Stories are not configured.");
-  }
-
-  return functions.createExecution(
-    appwriteConfig.storiesFunctionId,
-    JSON.stringify({ action: "create-story", ...story }),
-    false,
-    "/",
-    "POST",
-    { "Content-Type": "application/json" }
-  );
+  return executeStoriesAction({ action: "create-story", ...story });
 }
 
 export type StoryWithSegments = Models.Document & {

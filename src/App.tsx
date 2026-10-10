@@ -16,6 +16,7 @@ import {
   Drafts,
   Analytics,
   Messages,
+  CreateStory,
 } from "@/_root/pages";
 import AuthLayout from "./_auth/AuthLayout";
 import RootLayout from "./_root/RootLayout";
@@ -62,6 +63,7 @@ const App = () => {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/messages/:userId" element={<Messages />} />
+          <Route path="/create-story" element={<CreateStory />} />
           <Route path="/update-post/:id" element={<EditPost />} />
           <Route path="/posts/:id" element={<PostDetails />} />
           <Route path="/profile/:id/*" element={<Profile />} />

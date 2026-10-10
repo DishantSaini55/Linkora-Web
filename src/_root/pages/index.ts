@@ -14,3 +14,4 @@ export { default as Moderation } from "./Moderation";
 export { default as Drafts } from "./Drafts";
 export { default as Analytics } from "./Analytics";
 export { default as Messages } from "./Messages";
+export { default as CreateStory } from "./CreateStory";
