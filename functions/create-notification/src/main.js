@@ -100,6 +100,7 @@ function getRateLimitConfig(action) {
     comment: 30,
     message: 60,
     notification: 120,
+    story: 5,
   };
   const variable =
     action === "ai"
@@ -108,6 +109,8 @@ function getRateLimitConfig(action) {
         ? "RATE_LIMIT_COMMENT_MAX"
         : action === "message"
           ? "RATE_LIMIT_MESSAGE_MAX"
+          : action === "story"
+            ? "RATE_LIMIT_STORY_MAX"
           : "RATE_LIMIT_NOTIFICATION_MAX";
   const configured = Number.parseInt(process.env[variable] || "", 10);
   const maximum = Number.isFinite(configured) && configured > 0
@@ -406,6 +409,153 @@ export default async ({ req, res, error }) => {
           429
         );
       }
+    }
+      if (body.action === "create-story") {
+        const segments = Array.isArray(body.segments) ? body.segments : [];
+        const expiresInHours =
+          body.expiresInHours === undefined ? 24 : body.expiresInHours;
+        if (
+          !["public", "followers"].includes(body.privacy) ||
+          !Number.isInteger(expiresInHours) ||
+          expiresInHours < 1 ||
+          expiresInHours > 24 ||
+          segments.length < 1 ||
+          segments.length > 10 ||
+          segments.some(
+            (segment, index) =>
+              !segment ||
+              typeof segment !== "object" ||
+              segment.order !== index ||
+              typeof segment.fileId !== "string" ||
+              !/^[A-Za-z0-9._-]{1,100}$/.test(segment.fileId) ||
+              !["image", "video"].includes(segment.mediaType) ||
+              (segment.mediaType === "video" &&
+                (typeof segment.durationSeconds !== "number" ||
+                  !Number.isFinite(segment.durationSeconds) ||
+                  segment.durationSeconds <= 0 ||
+                  segment.durationSeconds > 60))
+          )
+        ) {
+          return res.json({ message: "Invalid Story payload." }, 400);
+        }
+        const retryAfterSeconds = checkRateLimit(actor, "story");
+        if (retryAfterSeconds) {
+          return res.json(
+            {
+              code: "RATE_LIMITED",
+              message: "Story publishing rate limit exceeded. Please try again later.",
+              retryAfterSeconds,
+            },
+            429
+          );
+        }
+        if (
+          !process.env.APPWRITE_STORIES_COLLECTION_ID ||
+          !process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID ||
+          !process.env.APPWRITE_STORAGE_ID
+        ) {
+          throw new Error(
+            "Stories collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_SEGMENTS_COLLECTION_ID."
+          );
+        }
+        const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
+        const storagePath = `/storage/buckets/${process.env.APPWRITE_STORAGE_ID}/files`;
+        for (const segment of segments) {
+          const file = await appwriteRequest(
+            `${storagePath}/${encodeURIComponent(segment.fileId)}`
+          );
+          const permissions = Array.isArray(file.$permissions)
+            ? file.$permissions
+            : [];
+          const expectedMimePrefix =
+            segment.mediaType === "image" ? "image/" : "video/";
+          if (
+            !permissions.includes(`update("user:${actor}")`) ||
+            typeof file.mimeType !== "string" ||
+            !file.mimeType.startsWith(expectedMimePrefix) ||
+            typeof file.sizeOriginal !== "number" ||
+            file.sizeOriginal > 50 * 1024 * 1024
+          ) {
+            return res.json(
+              {
+                code: "STORY_FILE_NOT_OWNED",
+                message: "Every Story file must belong to the authenticated user.",
+              },
+              403
+            );
+          }
+        }
+        const expiresAt = new Date(
+          Date.now() + expiresInHours * 60 * 60 * 1000
+        ).toISOString();
+        const story = await appwriteRequest(
+          `${databasePath}/collections/${process.env.APPWRITE_STORIES_COLLECTION_ID}/documents`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              documentId: "unique()",
+              data: {
+                owner: actor,
+                privacy: body.privacy,
+                expiresAt,
+                status: "published",
+              },
+              permissions: [
+                `read("users")`,
+                `update("user:${actor}")`,
+                `delete("user:${actor}")`,
+              ],
+            }),
+          }
+        );
+        const createdSegments = [];
+        try {
+          for (const segment of segments) {
+            createdSegments.push(
+              await appwriteRequest(
+                `${databasePath}/collections/${process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID}/documents`,
+                {
+                  method: "POST",
+                  body: JSON.stringify({
+                    documentId: "unique()",
+                    data: {
+                      storyId: story.$id,
+                      owner: actor,
+                      order: segment.order,
+                      mediaType: segment.mediaType,
+                      fileId: segment.fileId,
+                      ...(segment.durationSeconds !== undefined
+                        ? { durationSeconds: segment.durationSeconds }
+                        : {}),
+                    },
+                    permissions: [
+                      `read("users")`,
+                      `update("user:${actor}")`,
+                      `delete("user:${actor}")`,
+                    ],
+                  }),
+                }
+              )
+            );
+          }
+        } catch (segmentError) {
+          await Promise.allSettled([
+            ...createdSegments.map((createdSegment) =>
+              appwriteRequest(
+                `${databasePath}/collections/${process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID}/documents/${createdSegment.$id}`,
+                { method: "DELETE" }
+              )
+            ),
+            appwriteRequest(
+              `${databasePath}/collections/${process.env.APPWRITE_STORIES_COLLECTION_ID}/documents/${story.$id}`,
+              { method: "DELETE" }
+            ),
+          ]);
+          throw segmentError;
+        }
+        return res.json({ story, segments: createdSegments });
+      }
+    if (body.action === "create-report") {
       if (!process.env.APPWRITE_REPORTS_COLLECTION_ID) {
         throw new Error(
           "Reports collection is not configured. Set APPWRITE_REPORTS_COLLECTION_ID."
@@ -1103,6 +1253,7 @@ export default async ({ req, res, error }) => {
           action === "mark-read" ||
           action === "update-report" ||
           action === "delete-content" ||
+          action === "create-story" ||
           action === ""
             ? message
             : "Notification creation failed.",

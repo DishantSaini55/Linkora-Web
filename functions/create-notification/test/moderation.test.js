@@ -22,6 +22,9 @@ const originalEnvironment = {
   notificationCollectionId: process.env.APPWRITE_NOTIFICATION_COLLECTION_ID,
   reportsCollectionId: process.env.APPWRITE_REPORTS_COLLECTION_ID,
   postCollectionId: process.env.APPWRITE_POST_COLLECTION_ID,
+  storiesCollectionId: process.env.APPWRITE_STORIES_COLLECTION_ID,
+  storySegmentsCollectionId: process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID,
+  storageId: process.env.APPWRITE_STORAGE_ID,
   safetyCollectionId: process.env.APPWRITE_SAFETY_COLLECTION_ID,
 };
 const originalFetch = globalThis.fetch;
@@ -71,6 +74,23 @@ afterEach(() => {
   } else {
     process.env.APPWRITE_POST_COLLECTION_ID =
       originalEnvironment.postCollectionId;
+  }
+  if (originalEnvironment.storiesCollectionId === undefined) {
+    delete process.env.APPWRITE_STORIES_COLLECTION_ID;
+  } else {
+    process.env.APPWRITE_STORIES_COLLECTION_ID =
+      originalEnvironment.storiesCollectionId;
+  }
+  if (originalEnvironment.storySegmentsCollectionId === undefined) {
+    delete process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID;
+  } else {
+    process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID =
+      originalEnvironment.storySegmentsCollectionId;
+  }
+  if (originalEnvironment.storageId === undefined) {
+    delete process.env.APPWRITE_STORAGE_ID;
+  } else {
+    process.env.APPWRITE_STORAGE_ID = originalEnvironment.storageId;
   }
   if (originalEnvironment.safetyCollectionId === undefined) {
     delete process.env.APPWRITE_SAFETY_COLLECTION_ID;
@@ -308,6 +328,80 @@ test("rejects a report when the target does not exist", async () => {
   assert.equal(result.status, 404);
   assert.equal(result.body.code, "REPORT_TARGET_NOT_FOUND");
   assert.equal(reportLookupCount, 1);
+});
+
+test("creates an owner-bound Story and ordered segment", async () => {
+  process.env.APPWRITE_STORIES_COLLECTION_ID = "stories";
+  process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID = "story-segments";
+  process.env.APPWRITE_STORAGE_ID = "media";
+  const requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url: String(url), options });
+    if (String(url).includes("/storage/buckets/")) {
+      return new Response(
+        JSON.stringify({
+          $id: "file-1",
+          mimeType: "image/webp",
+          sizeOriginal: 1000,
+          $permissions: ['update("user:user-1")'],
+        }),
+        { status: 200 }
+      );
+    }
+    if (String(url).includes("/collections/stories/documents")) {
+      return new Response(JSON.stringify({ $id: "story-1" }), { status: 201 });
+    }
+    return new Response(JSON.stringify({ $id: "segment-1" }), { status: 201 });
+  };
+
+  const result = await invokeFunction({
+    action: "create-story",
+    privacy: "followers",
+    segments: [
+      { order: 0, mediaType: "image", fileId: "file-1" },
+    ],
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.story.$id, "story-1");
+  assert.equal(result.body.segments[0].$id, "segment-1");
+  assert.equal(requests.length, 3);
+  const storyPayload = JSON.parse(requests[1].options.body);
+  assert.equal(storyPayload.data.owner, "user-1");
+  assert.equal(storyPayload.data.privacy, "followers");
+  assert.equal(storyPayload.data.status, "published");
+  assert.equal(storyPayload.permissions[1], 'update("user:user-1")');
+});
+
+test("rejects Story media without authenticated ownership", async () => {
+  process.env.APPWRITE_STORIES_COLLECTION_ID = "stories";
+  process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID = "story-segments";
+  process.env.APPWRITE_STORAGE_ID = "media";
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        mimeType: "video/mp4",
+        sizeOriginal: 1000,
+        $permissions: ['update("user:another-user")'],
+      }),
+      { status: 200 }
+    );
+
+  const result = await invokeFunction({
+    action: "create-story",
+    privacy: "public",
+    segments: [
+      {
+        order: 0,
+        mediaType: "video",
+        fileId: "file-1",
+        durationSeconds: 10,
+      },
+    ],
+  });
+
+  assert.equal(result.status, 403);
+  assert.equal(result.body.code, "STORY_FILE_NOT_OWNED");
 });
 
 test("rejects moderator report actions without report configuration", async () => {

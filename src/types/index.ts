@@ -119,3 +119,14 @@ export type IStoryView = {
   viewerAccountId: string;
   viewedAt: string;
 };
+
+export type INewStory = {
+  privacy: StoryPrivacy;
+  expiresInHours?: number;
+  segments: Array<{
+    order: number;
+    mediaType: StoryMediaType;
+    fileId: string;
+    durationSeconds?: number;
+  }>;
+};

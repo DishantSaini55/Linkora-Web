@@ -26,6 +26,7 @@ Add these variables to the Function's environment:
 - `APPWRITE_STORIES_COLLECTION_ID`: the Stories table ID for Story actions
 - `APPWRITE_STORY_SEGMENTS_COLLECTION_ID`: the ordered StorySegments table ID
 - `APPWRITE_STORY_VIEWS_COLLECTION_ID`: the StoryViews table ID
+- `APPWRITE_STORAGE_ID`: the Storage bucket used for owner-bound Story media
 - `MODERATOR_ACCOUNT_IDS`: comma-separated Appwrite Auth account IDs allowed to moderate.
   `MODERATOR_ACCOUNT_ID` is also accepted for a single moderator.
 - `AI_PROVIDER`: `gemini` (default) or `openai`
@@ -44,6 +45,7 @@ Add these variables to the Function's environment:
 - `RATE_LIMIT_COMMENT_MAX`: optional comment requests per actor per window (default `30`)
 - `RATE_LIMIT_MESSAGE_MAX`: optional message requests per actor per window (default `60`)
 - `RATE_LIMIT_NOTIFICATION_MAX`: optional notification requests per actor per window (default `120`)
+- `RATE_LIMIT_STORY_MAX`: optional Story publishes per actor per window (default `5`)
 - `RATE_LIMIT_WINDOW_MS`: optional rate-limit window in milliseconds (default `60000`)
 
 Allow authenticated users to execute the Function, but do not expose the API
@@ -76,6 +78,12 @@ permissions. A user can submit at most one report for each post or comment;
 duplicate submissions return HTTP 409 with code `REPORT_ALREADY_EXISTS`.
 The Function verifies that the target exists before accepting the report and
 returns HTTP 404 with code `REPORT_TARGET_NOT_FOUND` otherwise.
+
+The `create-story` action accepts up to 10 ordered image or video segments.
+Uploaded files must carry an update permission for the authenticated account,
+video segments are limited to 60 seconds, and expiration is calculated
+server-side for a maximum of 24 hours. Failed segment creation rolls back the
+partially created Story records.
 
 Message creation and editing use the same moderation rules. Blocked messages
 return HTTP 422 with code `MESSAGE_MODERATION_BLOCKED`.

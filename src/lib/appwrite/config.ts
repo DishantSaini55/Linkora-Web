@@ -22,6 +22,10 @@ export const appwriteConfig = {
     import.meta.env.VITE_APPWRITE_STORY_SEGMENTS_COLLECTION_ID,
   storyViewsCollectionId:
     import.meta.env.VITE_APPWRITE_STORY_VIEWS_COLLECTION_ID,
+  storiesFunctionId:
+    import.meta.env.VITE_APPWRITE_STORIES_FUNCTION_ID ||
+    import.meta.env.VITE_APPWRITE_MODERATION_FUNCTION_ID ||
+    import.meta.env.VITE_APPWRITE_NOTIFICATION_FUNCTION_ID,
   preferencesCollectionId:
     import.meta.env.VITE_APPWRITE_PREFERENCES_COLLECTION_ID,
   notificationCollectionId:
@@ -90,7 +94,9 @@ export const isStoriesConfigured =
   typeof appwriteConfig.storySegmentsCollectionId === "string" &&
   appwriteConfig.storySegmentsCollectionId.length > 0 &&
   typeof appwriteConfig.storyViewsCollectionId === "string" &&
-  appwriteConfig.storyViewsCollectionId.length > 0;
+  appwriteConfig.storyViewsCollectionId.length > 0 &&
+  typeof appwriteConfig.storiesFunctionId === "string" &&
+  appwriteConfig.storiesFunctionId.length > 0;
 
 export const isMessageFunctionConfigured =
   typeof appwriteConfig.messageFunctionId === "string" &&

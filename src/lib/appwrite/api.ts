@@ -16,10 +16,17 @@ import {
   isPreferencesConfigured,
   isMessagesConfigured,
   isInteractionEventsConfigured,
+  isStoriesConfigured,
   isMessageFunctionConfigured,
   isModerationFunctionConfigured,
 } from "./config";
-import { IUpdatePost, INewPost, INewUser, IUpdateUser } from "@/types";
+import {
+  IUpdatePost,
+  INewPost,
+  INewStory,
+  INewUser,
+  IUpdateUser,
+} from "@/types";
 
 // ============================================================
 // AUTH
@@ -193,6 +200,25 @@ export async function uploadFile(file: File) {
     ID.unique(),
     file,
     [Permission.read(Role.users())]
+  );
+}
+
+export async function uploadStoryMediaFile(file: File, accountId: string) {
+  const supportedType =
+    file.type.startsWith("image/") || file.type.startsWith("video/");
+  if (!supportedType || file.size > 50 * 1024 * 1024) {
+    throw new Error("Story media must be an image or video smaller than 50 MB.");
+  }
+
+  return storage.createFile(
+    appwriteConfig.storageId,
+    ID.unique(),
+    file,
+    [
+      Permission.read(Role.users()),
+      Permission.update(Role.user(accountId)),
+      Permission.delete(Role.user(accountId)),
+    ]
   );
 }
 
@@ -778,9 +804,25 @@ async function executeModerationAction(payload: Record<string, unknown>) {
     } catch {
       if (execution.responseBody) message = execution.responseBody;
     }
+
     throw new Error(message);
   }
   return execution;
+}
+
+export async function createStory(story: INewStory) {
+  if (!isStoriesConfigured) {
+    throw new Error("Stories are not configured.");
+  }
+
+  return functions.createExecution(
+    appwriteConfig.storiesFunctionId,
+    JSON.stringify({ action: "create-story", ...story }),
+    false,
+    "/",
+    "POST",
+    { "Content-Type": "application/json" }
+  );
 }
 
 async function resolveReportTarget(
