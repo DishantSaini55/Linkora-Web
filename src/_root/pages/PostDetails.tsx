@@ -159,7 +159,12 @@ const PostDetails = () => {
     if (!content || isUpdatingComment) return;
 
     updateComment(
-      { commentId, content, postId: id || "" },
+      {
+        commentId,
+        content,
+        authorAccountId: user.accountId,
+        postId: id || "",
+      },
       {
         onSuccess: () => {
           setEditingCommentId(null);
@@ -388,23 +393,25 @@ const PostDetails = () => {
                     ) : (
                       <p className="body-regular mt-3">{item.content}</p>
                     )}
-                    {author?.$id === user.id && editingCommentId !== item.$id ? (
+                    {editingCommentId !== item.$id ? (
                       <div className="mt-3 flex gap-3">
-                        <button
-                          type="button"
-                          className="small-semibold text-primary-500"
-                          onClick={() => {
-                            setEditingCommentId(item.$id);
-                            setEditingContent(item.content);
-                          }}>
-                          Edit
-                        </button>
+                        {author?.$id === user.id ? (
+                          <button
+                            type="button"
+                            className="small-semibold text-primary-500"
+                            onClick={() => {
+                              setEditingCommentId(item.$id);
+                              setEditingContent(item.content);
+                            }}>
+                            Edit
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="small-semibold text-red-400"
                           disabled={isDeletingComment}
                           onClick={() =>
-                            deleteComment(item.$id, {
+                            deleteComment({ commentId: item.$id, accountId: user.accountId }, {
                               onError: (error) =>
                                 toast({
                                   title: "Comment deletion failed",

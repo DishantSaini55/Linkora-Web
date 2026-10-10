@@ -56,6 +56,7 @@ import {
   deleteModeratedContent,
   updateMessage,
   deleteMessage,
+  generateAiContent,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -163,6 +164,11 @@ export const useCreatePost = () => {
     },
   });
 };
+
+export const useGenerateAiContent = () =>
+  useMutation({
+    mutationFn: generateAiContent,
+  });
 
 export const useGetPostById = (postId?: string) => {
   return useQuery({
@@ -657,11 +663,13 @@ export const useUpdateComment = () => {
     mutationFn: ({
       commentId,
       content,
+      authorAccountId,
     }: {
       commentId: string;
       content: string;
+      authorAccountId: string;
       postId: string;
-    }) => updateComment(commentId, content),
+    }) => updateComment(commentId, content, authorAccountId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_COMMENTS, variables.postId],
@@ -674,7 +682,13 @@ export const useDeleteComment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (commentId: string) => deleteComment(commentId),
+    mutationFn: ({
+      commentId,
+      accountId,
+    }: {
+      commentId: string;
+      accountId: string;
+    }) => deleteComment(commentId, accountId),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_COMMENTS],

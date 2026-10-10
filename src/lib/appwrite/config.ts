@@ -14,6 +14,7 @@ export const appwriteConfig = {
   safetyCollectionId: import.meta.env.VITE_APPWRITE_SAFETY_COLLECTION_ID,
   draftsCollectionId: import.meta.env.VITE_APPWRITE_DRAFTS_COLLECTION_ID,
   messagesCollectionId: import.meta.env.VITE_APPWRITE_MESSAGES_COLLECTION_ID,
+  presenceCollectionId: import.meta.env.VITE_APPWRITE_PRESENCE_COLLECTION_ID,
   preferencesCollectionId:
     import.meta.env.VITE_APPWRITE_PREFERENCES_COLLECTION_ID,
   notificationCollectionId:
@@ -79,6 +80,13 @@ export const isMessageFunctionConfigured =
 export const isModerationFunctionConfigured =
   typeof appwriteConfig.moderationFunctionId === "string" &&
   appwriteConfig.moderationFunctionId.length > 0;
+
+export const moderatorAccountIds = new Set(
+  (import.meta.env.VITE_MODERATOR_ACCOUNT_IDS || "")
+    .split(",")
+    .map((value: string) => value.trim())
+    .filter(Boolean)
+);
 
 export const client = new Client();
 
