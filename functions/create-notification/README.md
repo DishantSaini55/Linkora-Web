@@ -51,7 +51,8 @@ feature. Set `VITE_APPWRITE_MESSAGE_FUNCTION_ID` to this same Function ID, or
 leave it empty and the frontend will use the notification Function ID.
 Message attachments are validated server-side: IDs must be valid Appwrite-style
 identifiers, and attachment URLs must be HTTP(S) URLs no longer than 2048
-characters.
+characters. Message creation also verifies both profile IDs against the Users
+collection so clients cannot spoof either participant's account ID.
 
 It also accepts `generate-caption` and `generate-hashtags` actions. Gemini is
 the default provider. AI keys must remain in the Function environment and

@@ -159,6 +159,12 @@ test("creates a moderated comment through Appwrite", async () => {
   const requests = [];
   globalThis.fetch = async (url, options = {}) => {
     requests.push({ url: String(url), options });
+    if (String(url).includes("/collections/users/documents/profile-1")) {
+      return new Response(JSON.stringify({ accountId: "user-1" }), { status: 200 });
+    }
+    if (String(url).includes("/collections/users/documents/profile-2")) {
+      return new Response(JSON.stringify({ accountId: "user-2" }), { status: 200 });
+    }
     return new Response(
       JSON.stringify({ $id: "comment-1", content: "Hello" }),
       { status: 201, headers: { "Content-Type": "application/json" } }
@@ -296,6 +302,12 @@ test("sends a message with the authenticated actor as sender", async () => {
   const requests = [];
   globalThis.fetch = async (url, options = {}) => {
     requests.push({ url: String(url), options });
+    if (String(url).includes("/collections/users/documents/profile-1")) {
+      return new Response(JSON.stringify({ accountId: "user-1" }), { status: 200 });
+    }
+    if (String(url).includes("/collections/users/documents/profile-2")) {
+      return new Response(JSON.stringify({ accountId: "user-2" }), { status: 200 });
+    }
     return new Response(
       JSON.stringify({ $id: "message-1", senderAccountId: "user-1" }),
       { status: 201 }
@@ -315,7 +327,9 @@ test("sends a message with the authenticated actor as sender", async () => {
 
   assert.equal(result.status, 200);
   assert.equal(result.body.senderAccountId, "user-1");
-  const payload = JSON.parse(requests[0].options.body);
+  const payload = JSON.parse(
+    requests.find(({ options }) => options.method === "POST").options.body
+  );
   assert.equal(payload.data.senderAccountId, "user-1");
   assert.deepEqual(payload.permissions, [
     'read("user:user-1")',
@@ -345,6 +359,37 @@ test("rejects invalid message attachment metadata before Appwrite", async () => 
   assert.equal(result.status, 400);
   assert.equal(result.body.message, "Invalid message attachment.");
   assert.equal(requestCount, 0);
+});
+
+test("rejects a spoofed sender profile before creating a message", async () => {
+  let createRequestSeen = false;
+  globalThis.fetch = async (url, options = {}) => {
+    if (options.method === "POST") createRequestSeen = true;
+    if (String(url).includes("/collections/users/documents/profile-1")) {
+      return new Response(JSON.stringify({ accountId: "different-user" }), {
+        status: 200,
+      });
+    }
+    return new Response(JSON.stringify({ accountId: "user-2" }), { status: 200 });
+  };
+
+  const result = await invokeFunction(
+    {
+      action: "send-message",
+      recipient: "user-2",
+      recipientProfileId: "profile-2",
+      senderProfileId: "profile-1",
+      content: "Hello",
+    },
+    "user-1"
+  );
+
+  assert.equal(result.status, 403);
+  assert.equal(
+    result.body.message,
+    "The sender profile does not match the session."
+  );
+  assert.equal(createRequestSeen, false);
 });
 
 test("rejects editing a message owned by another account", async () => {

@@ -652,6 +652,32 @@ export default async ({ req, res, error }) => {
           "Messages collection is not configured. Set APPWRITE_MESSAGES_COLLECTION_ID."
         );
       }
+      if (!usersCollectionId) {
+        throw new Error(
+          "Users collection is not configured. Set APPWRITE_USER_COLLECTION_ID."
+        );
+      }
+      const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
+      const [senderProfile, recipientProfile] = await Promise.all([
+        appwriteRequest(
+          `${databasePath}/collections/${usersCollectionId}/documents/${senderProfileId}`
+        ),
+        appwriteRequest(
+          `${databasePath}/collections/${usersCollectionId}/documents/${recipientProfileId}`
+        ),
+      ]);
+      if (senderProfile.accountId !== actor) {
+        return res.json(
+          { message: "The sender profile does not match the session." },
+          403
+        );
+      }
+      if (recipientProfile.accountId !== recipient) {
+        return res.json(
+          { message: "The recipient profile does not match the account." },
+          403
+        );
+      }
 
       const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, "");
       const response = await fetch(
