@@ -496,8 +496,22 @@ export default async ({ req, res, error }) => {
           !process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID ||
           !process.env.APPWRITE_STORAGE_ID
         ) {
-          throw new Error(
-            "Stories collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_SEGMENTS_COLLECTION_ID."
+          return res.json(
+            {
+              code: "STORY_CONFIGURATION_MISSING",
+              message:
+                "Stories collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_SEGMENTS_COLLECTION_ID.",
+              configured: {
+                storiesCollection: Boolean(
+                  process.env.APPWRITE_STORIES_COLLECTION_ID
+                ),
+                storySegmentsCollection: Boolean(
+                  process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID
+                ),
+                storage: Boolean(process.env.APPWRITE_STORAGE_ID),
+              },
+            },
+            503
           );
         }
         const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
@@ -639,8 +653,22 @@ export default async ({ req, res, error }) => {
         !process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID ||
         !usersCollectionId
       ) {
-        throw new Error(
-          "Stories collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_SEGMENTS_COLLECTION_ID."
+        return res.json(
+          {
+            code: "STORY_CONFIGURATION_MISSING",
+            message:
+              "Stories collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_SEGMENTS_COLLECTION_ID.",
+            configured: {
+              storiesCollection: Boolean(
+                process.env.APPWRITE_STORIES_COLLECTION_ID
+              ),
+              storySegmentsCollection: Boolean(
+                process.env.APPWRITE_STORY_SEGMENTS_COLLECTION_ID
+              ),
+              usersCollection: Boolean(usersCollectionId),
+            },
+          },
+          503
         );
       }
       const databasePath = `/databases/${process.env.APPWRITE_DATABASE_ID}`;
@@ -747,8 +775,21 @@ export default async ({ req, res, error }) => {
         !process.env.APPWRITE_STORIES_COLLECTION_ID ||
         !process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID
       ) {
-        throw new Error(
-          "Story view collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_VIEWS_COLLECTION_ID."
+        return res.json(
+          {
+            code: "STORY_CONFIGURATION_MISSING",
+            message:
+              "Story view collections are not configured. Set APPWRITE_STORIES_COLLECTION_ID and APPWRITE_STORY_VIEWS_COLLECTION_ID.",
+            configured: {
+              storiesCollection: Boolean(
+                process.env.APPWRITE_STORIES_COLLECTION_ID
+              ),
+              storyViewsCollection: Boolean(
+                process.env.APPWRITE_STORY_VIEWS_COLLECTION_ID
+              ),
+            },
+          },
+          503
         );
       }
       if (
