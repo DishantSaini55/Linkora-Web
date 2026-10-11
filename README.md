@@ -25,12 +25,6 @@
   </p>
 </div>
 
-<br />
-
-<div align="center">
-  <img src="./public/assets/images/side-img.svg" alt="Linkora social experience" width="680" />
-</div>
-
 > The live demo requires a configured Appwrite project. No server credentials
 > are included in this repository.
 
