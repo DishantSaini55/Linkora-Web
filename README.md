@@ -1,57 +1,106 @@
-# Linkora
+<div align="center">
+  <img src="./public/assets/images/logo.svg" alt="Linkora logo" width="92" />
+  <h1>Linkora</h1>
+  <p><strong>Share what matters. Discover what inspires.</strong></p>
+  <p>A modern, AI-powered social platform for creators, communities, and meaningful connections.</p>
 
-Linkora is a responsive social-media web application for sharing image posts, discovering creators, and saving content to revisit later. It pairs a React client with Appwrite authentication, database, and storage services.
+  <p>
+    <a href="https://linkoraweb.vercel.app/"><strong>Open live demo</strong></a>
+    &nbsp;&bull;&nbsp;
+    <a href="https://github.com/DishantSaini55/Linkora-Web">View source</a>
+    &nbsp;&bull;&nbsp;
+    <a href="https://github.com/DishantSaini55/Linkora-Web/issues">Report an issue</a>
+  </p>
 
-## Overview
+  <p>
+    <a href="https://github.com/DishantSaini55/Linkora-Web/actions/workflows/ci.yml">
+      <img src="https://github.com/DishantSaini55/Linkora-Web/actions/workflows/ci.yml/badge.svg" alt="CI status" />
+    </a>
+    <a href="https://linkoraweb.vercel.app/">
+      <img src="https://img.shields.io/badge/demo-live-7c3aed?style=flat-square" alt="Live demo" />
+    </a>
+    <img src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white" alt="React 18" />
+    <img src="https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 5" />
+    <img src="https://img.shields.io/badge/Appwrite-backend-f02e65?style=flat-square&logo=appwrite&logoColor=white" alt="Appwrite" />
+  </p>
+</div>
 
-Linkora gives users a single place to create visual posts, browse recent content, interact with posts, manage their profile, and maintain a personal saved-post collection. The application is designed as a client-rendered web experience with responsive navigation for desktop and mobile layouts.
+<br />
 
-## Features
+<div align="center">
+  <img src="./public/assets/images/side-img.svg" alt="Linkora social experience" width="680" />
+</div>
 
-- Email-and-password account creation and sign-in
-- Persistent Appwrite sessions and user-profile recovery
-- Create, edit, and delete image posts
-- Image validation for PNG, JPEG, and WebP uploads up to 10 MB
-- Home feed and creator discovery
-- Post likes and saved posts
-- Follow relationships and follow notifications
-- Commenting with comment notifications
-- Unread notification badges
-- Private post and comment reports
-- Search and recent-post filtering
-- User profiles and profile editing
-- Responsive navigation with desktop and mobile layouts
+> The live demo requires a configured Appwrite project. No server credentials
+> are included in this repository.
 
-## Tech Stack
+## Why Linkora?
 
-- [React](https://react.dev/) 18
-- [TypeScript](https://www.typescriptlang.org/)
-- [Vite](https://vitejs.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Radix UI](https://www.radix-ui.com/)
-- [TanStack Query](https://tanstack.com/query/latest)
-- [React Hook Form](https://react-hook-form.com/) and [Zod](https://zod.dev/)
-- [Appwrite](https://appwrite.io/) for authentication, data, and media storage
+Linkora brings the core social experience into one focused product: a visual
+feed for publishing, Stories for moments that expire, messaging for private
+conversations, and built-in safety controls for healthier communities.
+
+<table>
+  <tr>
+    <td width="50%"><strong>Publish beautifully</strong><br />Create image posts, manage drafts, add captions, and organize your profile.</td>
+    <td width="50%"><strong>Connect naturally</strong><br />Follow creators, comment, save posts, message privately, and receive notifications.</td>
+  </tr>
+  <tr>
+    <td><strong>Tell stories</strong><br />Share expiring image or video segments with overlays, privacy controls, views, and owned audio.</td>
+    <td><strong>Build responsibly</strong><br />Use server-side authorization, moderation, reporting, blocking, and rate limiting.</td>
+  </tr>
+</table>
+
+## Feature overview
+
+| Social | Creator | Intelligence | Safety |
+| --- | --- | --- | --- |
+| Feed and discovery | Drafts and publishing | AI captions and hashtags | Ownership validation |
+| Likes, comments, saves | Profiles and media | Gemini through Function | Reports and moderation |
+| Follows and notifications | Stories and overlays | Server-side API keys | Blocking and muting |
+| Private messaging | User-owned Story audio | Secure action routing | Rate limiting |
+
+## Tech stack
+
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| State and forms | TanStack Query, React Hook Form, Zod |
+| Backend platform | Appwrite Auth, Databases, Storage, Functions |
+| Server runtime | Node.js 18+ |
+| AI | Gemini API through the Appwrite Function |
+| Quality | ESLint, TypeScript, Node test runner, GitHub Actions |
+| Deployment | Vercel-compatible Vite build and Appwrite Function |
 
 ## Architecture
 
-The React single-page application runs entirely in the browser. TanStack Query manages cached server data and mutations. The Appwrite Web SDK provides three backend services:
+```text
+React/Vite client
+       |
+       +--> Appwrite Auth, Tables, and Storage
+       |
+       +--> create-notification Function
+               +--> authorization and ownership checks
+               +--> moderation and rate limiting
+               +--> reports, messaging, and notifications
+               +--> Story publishing, privacy, views, and media validation
+               +--> server-side Gemini requests
+```
 
-- **Account** for email/password accounts and sessions
-- **Databases** for user profiles, posts, and saved-post records
-- **Storage** for uploaded post and profile images
+The single Appwrite Function in
+[`functions/create-notification/`](./functions/create-notification/) exposes
+secured actions for notifications, reports, moderation, messaging, AI
+generation, and Stories. Sensitive API keys are never sent to the browser.
 
-The project uses Appwrite's legacy `Databases` client methods. They remain compatible with the current TablesDB terminology in the Appwrite Console, where collections/documents are displayed as tables/rows.
+## Getting started
 
-## Getting Started
-
-### Prerequisites
+### Requirements
 
 - Node.js 18 or newer
 - npm
-- An Appwrite project with web-platform access configured for your local or deployed URL
+- An Appwrite project with a Web platform for the local/deployed hostname
 
-### Installation
+### Install
 
 ```bash
 git clone https://github.com/DishantSaini55/Linkora-Web.git
@@ -59,290 +108,221 @@ cd Linkora-Web
 npm ci
 ```
 
-### Environment Variables
-
-Copy the provided template before running the application:
-
-```bash
-cp .env.example .env.local
-```
-
-On Windows PowerShell:
+Create local configuration from the template:
 
 ```powershell
 Copy-Item .env.example .env.local
 ```
 
-Populate `.env.local` with the public identifiers from your Appwrite project. Never add server API keys, service-role keys, or other secrets to a `VITE_` variable because Vite exposes those values to the browser.
+Populate `.env.local` with your Appwrite project identifiers. Vite exposes
+`VITE_*` values to the browser, so **never put an API key or provider secret in
+one of those variables**.
 
-| Variable | Description |
-| --- | --- |
-| `VITE_APPWRITE_URL` | Appwrite endpoint, including `/v1` |
-| `VITE_APPWRITE_PROJECT_ID` | Appwrite project ID |
-| `VITE_APPWRITE_DATABASE_ID` | Linkora database ID |
-| `VITE_APPWRITE_STORAGE_ID` | Media storage-bucket ID |
-| `VITE_APPWRITE_USER_COLLECTION_ID` | Users table ID |
-| `VITE_APPWRITE_POST_COLLECTION_ID` | Posts table ID |
-| `VITE_APPWRITE_SAVES_COLLECTION_ID` | Saves table ID |
-| `VITE_APPWRITE_NOTIFICATION_COLLECTION_ID` | Notifications table ID |
-| `VITE_APPWRITE_NOTIFICATION_FUNCTION_ID` | Appwrite Function ID used to create private notifications |
-| `VITE_APPWRITE_FOLLOWS_COLLECTION_ID` | Follows table ID |
-| `VITE_APPWRITE_COMMENTS_COLLECTION_ID` | Comments table ID |
-| `VITE_APPWRITE_REPORTS_COLLECTION_ID` | Private Reports table ID |
-| `VITE_APPWRITE_SAFETY_COLLECTION_ID` | Block/mute relationships table ID |
-| `VITE_APPWRITE_DRAFTS_COLLECTION_ID` | Cloud post drafts table ID |
-| `VITE_APPWRITE_PREFERENCES_COLLECTION_ID` | Optional cross-device notification preferences table ID |
-| `VITE_APPWRITE_MESSAGES_COLLECTION_ID` | Optional private Messages table ID |
-| `VITE_APPWRITE_PRESENCE_COLLECTION_ID` | Optional Presence table ID for cross-device online and typing status |
-| `VITE_APPWRITE_INTERACTION_EVENTS_COLLECTION_ID` | Optional InteractionEvents table ID for feed analytics and personalization |
-| `VITE_APPWRITE_STORIES_COLLECTION_ID` | Stories table ID |
-| `VITE_APPWRITE_STORY_SEGMENTS_COLLECTION_ID` | Ordered StorySegments table ID |
-| `VITE_APPWRITE_STORY_VIEWS_COLLECTION_ID` | StoryViews table ID |
-
-The Messages table should include `senderAccountId` (string), `attachmentId`
-(optional string), and `attachmentUrl` (optional string). The Function also
-needs `APPWRITE_USER_COLLECTION_ID` so older messages can be edited or deleted
-after authorization is verified against the sender's profile.
-
-Create a Presence table with document ID equal to the profile ID and these
-attributes: `online` (boolean), `typingTo` (optional string), and `updatedAt`
-(string). Allow authenticated users to read Presence documents. The owning
-user must be allowed to update and delete their own document. Add the table ID
-to `.env.local`, then restart Vite.
-| `VITE_APPWRITE_MESSAGE_FUNCTION_ID` | Optional Function ID used to create private messages; defaults to the notification Function ID |
-
-The Users collection should also include these optional attributes:
-
-- `imageId` (string): the Storage file ID for the current profile picture.
-- `nameChangedAt` (datetime): set automatically when the display name changes.
-- `usernameChangedAt` (datetime): set automatically when the username changes.
-
-### Stories schema contract
-
-Stories are planned as a separate media subsystem. Phase 3A only adds the
-configuration and type contracts; it does not publish or display Stories yet.
-Create these Appwrite tables before enabling later Stories phases:
-
-- `Stories`: `owner` (string), `privacy` (enum: `public`, `followers`),
-  `expiresAt` (datetime), `status` (enum: `published`, `expired`, `deleted`)
-- `StorySegments`: `storyId` (string), `owner` (string), `order` (integer),
-  `mediaType` (enum: `image`, `video`), `fileId` (string),
-  `durationSeconds` (float, optional), `overlays` (string, optional),
-  `music` (string, optional)
-- `StoryViews`: `storyId` (string), `segmentId` (string),
-  `viewerAccountId` (string), `viewedAt` (datetime)
-
-Use indexes on `Stories.owner`, `Stories.expiresAt`, `StorySegments.storyId`,
-`StorySegments.owner`, `StoryViews.storyId`, and `StoryViews.viewerAccountId`.
-The Function will enforce ownership, privacy, expiration, file validation, and
-view deduplication in the later implementation phases. Do not expose the
-Stories bucket publicly or store media binaries in database documents.
-
-Create a **Key** index on `username` so profile updates can reject duplicate
-usernames reliably. Usernames may contain letters, numbers, underscores, and
-periods, and can be changed once every 30 days.
-
-Profile pictures accept PNG, JPG, and JPEG files up to 10 MB. The application
-stores the uploaded file ID and uses the Appwrite file-view URL so updated
-avatars remain visible across profile, navigation, search, and feed surfaces.
-Display names can be changed once every 30 days.
-
-Like/save notifications require the Appwrite Function in
-[`functions/create-notification`](./functions/create-notification). Configure
-its server-only environment variables and execution permissions using that
-function's README. Never put the Function API key in `.env.local` or any
-`VITE_` variable.
-
-### Run Locally
+Start the development server:
 
 ```bash
 npm run dev
 ```
 
-Vite prints the local URL, normally `http://localhost:5173`.
+The default local URL is `http://localhost:5173`.
 
-## Project Structure
+## Appwrite setup
+
+### Frontend variables
+
+The client uses the public identifiers listed in [`.env.example`](./.env.example),
+including:
 
 ```text
-src/
-├── _auth/                 # Public authentication layout and forms
-├── _root/                 # Authenticated layouts and route pages
-├── components/            # Shared UI, forms, and feature components
-├── context/               # Authentication state provider
-├── hooks/                 # Reusable React hooks
-├── lib/
-│   ├── appwrite/          # Appwrite client configuration and API calls
-│   └── react-query/       # Query hooks and cache keys
-└── types/                 # Shared TypeScript types
-
-public/
-└── assets/                # Static icons, branding, and images
+VITE_APPWRITE_URL
+VITE_APPWRITE_PROJECT_ID
+VITE_APPWRITE_DATABASE_ID
+VITE_APPWRITE_STORAGE_ID
+VITE_APPWRITE_USER_COLLECTION_ID
+VITE_APPWRITE_POST_COLLECTION_ID
+VITE_APPWRITE_SAVES_COLLECTION_ID
+VITE_APPWRITE_FOLLOWS_COLLECTION_ID
+VITE_APPWRITE_COMMENTS_COLLECTION_ID
+VITE_APPWRITE_REPORTS_COLLECTION_ID
+VITE_APPWRITE_STORIES_COLLECTION_ID
+VITE_APPWRITE_STORY_SEGMENTS_COLLECTION_ID
+VITE_APPWRITE_STORY_VIEWS_COLLECTION_ID
+VITE_APPWRITE_STORIES_FUNCTION_ID
 ```
 
-## Database and Storage Setup
+Optional features use the remaining collection/function variables in the
+template. Restart Vite after changing environment variables.
 
-Create these Appwrite resources and place their IDs in `.env.local`:
+### Core data model
 
-- **Users** table: application profile data linked to an Appwrite Account
-- **Posts** table: creator relationship, caption, image URL, image-file ID, location, tags, likes, and saves
-- **Saves** table: user-to-post saved-record relationship
-- **Follows** table: `follower` and `following` profile IDs, with key indexes on both fields
-- **Comments** table: `post`, `author`, and `content` fields, with a key index on `post`
-- **Reports** table: `reporter`, `targetType`, `targetId`, and `reason`; enable authenticated Create and keep reads private
-- **Media** bucket: uploaded post and profile images
+Create the following Appwrite collections/tables:
 
-The existing Posts table uses `imageid` (lowercase `i`) for the image-file ID column. Keep that key if you use the supplied Appwrite schema.
+- **Users** — profile data linked to an Appwrite account
+- **Posts** — captions, media references, locations, tags, likes, and saves
+- **Saves** — user-to-post saved records
+- **Follows** — `follower` and `following` profile IDs
+- **Comments** — post, author, and content
+- **Reports** — private moderation reports
+- **Notifications** — like, save, follow, and comment notifications
+- **Messages** — sender, recipient, content, and read state
+- **Stories** — owner, privacy, expiration, and status
+- **StorySegments** — ordered media references, overlays, and music metadata
+- **StoryViews** — Story, segment, viewer, and timestamp
 
-Authenticated users need the relevant permissions on the tables and media bucket. At a minimum, grant the operations used by the client: create/read for profile records; create/read/update/delete for posts and saves; and create/read/update/delete for media files. Without storage create permission, image-post creation will fail before a post row is created.
+Recommended indexes include:
 
-For the Follows and Comments tables, enable authenticated Create and public Read;
-document permissions restrict follow deletion and comment editing/deletion to the
-relevant user. For Reports, enable authenticated Create only and configure
-document-level read permissions for the reporter. The notification type field
-must accept `like`, `save`, `follow`, and `comment`.
+```text
+Users.accountId, Users.username
+Follows.follower, Follows.following
+Comments.post
+Reports.reporter, Reports.targetId
+Stories.owner, Stories.expiresAt
+StorySegments.storyId, StorySegments.owner
+StoryViews.storyId, StoryViews.viewerAccountId
+```
 
-Optional advanced tables:
+Use authenticated-user read access for profile/feed data. Keep reports, drafts,
+preferences, safety records, and view records private. The trusted Function
+enforces Story privacy and ownership; do not grant clients unrestricted create,
+update, or delete permissions for Story records.
 
-- **InteractionEvents**: `userAccountId`, `eventType`, optional `postId`,
-  optional `targetId`, optional `creatorId`, and `createdAt`. Enable
-  authenticated Create and private owner Read. The client records impressions,
-  likes, saves, comments, and follows when this optional table is configured.
+### Storage
 
-- **Safety**: `owner`, `target`, and `type` (`block` or `mute`). Enable
-  authenticated Create, private Read, and owner Delete.
-- **Drafts**: `owner`, `caption`, `location`, and `tags`. Enable authenticated
-  Create and private owner Read/Update/Delete.
-- **Notification Preferences**: `owner`, `likes`, `comments`, `follows`, and
-  `saves`. Enable authenticated Create and private owner Read/Update/Delete.
-- **Moderation**: the `/moderation` page reads Reports using Appwrite table
-  permissions. Grant Read only to trusted moderator accounts; do not expose
-  Reports with public Read.
+Linkora uses one Appwrite Storage bucket for profile media, post media, Story
+media, and user-owned Story audio. Authenticated users need bucket-level Create
+and Read access. Newly uploaded Story files receive authenticated-user read
+permission plus owner update/delete permissions.
 
-For the moderation actions, also add these optional Reports attributes:
-`status` (string, 30 characters), `moderatorNote` (string, 2200 characters),
-`reviewedBy` (string, 100 characters), and `reviewedAt` (datetime). Existing
-reports without `status` are treated as `pending`.
+Supported limits:
 
-The `/drafts` page lists, opens, updates, and deletes cloud drafts. The
-`/analytics` page calculates basic creator metrics from the signed-in user's
-posts. Images are intentionally not stored inside draft metadata; select the
-image again before publishing.
+- Post/profile images: 10 MB
+- Story images/videos: 50 MB
+- Story videos: 60 seconds
+- Story audio: 20 MB
+- Selected Story audio range: 60 seconds
 
-Private messaging uses the optional `Messages` collection. Create these
-attributes:
+### Deploy the Appwrite Function
 
-- `sender` (string, 100)
-- `recipient` (string, 100)
-- `content` (string, 2000)
-- `read` (boolean)
+The repository contains one deployable Function. Configure it from
+[`functions/create-notification/README.md`](./functions/create-notification/README.md).
 
-Create key indexes on `sender`, `recipient`, and `read`. The app stores profile
-document IDs in `sender` and `recipient`. Message documents are created with
-read and update permissions for both participants, using their Appwrite
-authentication account IDs. Add the collection ID to `.env.local` as
-`VITE_APPWRITE_MESSAGES_COLLECTION_ID`, restart Vite, and open `/messages`.
-Users can also start a conversation from another user's profile.
+Build the current archive:
 
-The browser cannot grant a second user's row permission directly. Deploy the
-existing `functions/create-notification` Function after adding its message
-action, give it `APPWRITE_MESSAGES_COLLECTION_ID`, and set
-`VITE_APPWRITE_MESSAGE_FUNCTION_ID` to that Function ID. The Function also
-needs the same `APPWRITE_API_KEY` database document-create access used for
-notifications. Set `APPWRITE_SAFETY_COLLECTION_ID` on the Function to enforce
-server-side blocks for messaging; when configured, either participant blocking
-the other prevents new messages.
+```powershell
+tar -czf create-notification.tar.gz -C functions/create-notification package.json src
+```
 
-The same Function protects moderation actions. Set
-`MODERATOR_ACCOUNT_IDS` to a comma-separated allowlist of Appwrite Auth
-account IDs and add `APPWRITE_REPORTS_COLLECTION_ID`,
-`APPWRITE_POST_COLLECTION_ID`, and `APPWRITE_COMMENTS_COLLECTION_ID` to the
-Function environment. Report updates and reported-content deletion are then
-authorized server-side.
+Upload [`create-notification.tar.gz`](./create-notification.tar.gz) to an
+Appwrite Node.js Function with:
 
-Comment creation and editing also go through this Function. The server applies
-basic abusive, hateful, and self-harm language checks before writing a comment;
-blocked content returns a moderation message and is not stored. Make sure the
-Function API key has create and update access to the Comments collection and
-read access to the Users collection.
+```text
+Entrypoint: src/main.js
+Runtime: Node.js 18+
+Execution: authenticated users
+```
 
-To add project-specific blocked words or phrases, add
-`BLOCKED_COMMENT_TERMS=term-one,term two` to the Function variables and
-redeploy. Avoid blocking ordinary words that may appear in legitimate
-conversation.
+The Function requires server-only variables such as:
 
-The same Function can provide the optional AI caption assistant. Gemini is the
-default provider: configure `GEMINI_API_KEY` and optionally `GEMINI_MODEL` in
-the Function environment. Set `AI_PROVIDER=openai` only when using the
-OpenAI-compatible fallback with `AI_API_KEY`. Never put provider keys in
-`.env.local`. The post composer calls the Function for `generate-caption` and
-`generate-hashtags`, and users must insert and submit generated text manually.
+```text
+APPWRITE_ENDPOINT
+APPWRITE_PROJECT_ID
+APPWRITE_DATABASE_ID
+APPWRITE_API_KEY
+APPWRITE_STORAGE_ID
+APPWRITE_USER_COLLECTION_ID
+APPWRITE_STORIES_COLLECTION_ID
+APPWRITE_STORY_SEGMENTS_COLLECTION_ID
+APPWRITE_STORY_VIEWS_COLLECTION_ID
+```
 
-### Recommended indexes
+It also accepts the optional moderation, messaging, follows, reports, and AI
+configuration documented in the Function README. The API key needs the minimum
+database/document and `files.read` scopes required by the configured features.
 
-Create key indexes on `Users.accountId`, `Users.username`, `Comments.post`, `Follows.follower`,
-`Follows.following`, `Reports.reporter`, `Reports.targetId`,
-`Safety.owner`, and `Drafts.owner`. Keep ID index lengths near 100 and enum
-values near 30 rather than using the maximum attribute length for every index.
-Keep the existing full-text index on `Users.username` as well if Explore username
-search is enabled.
+## Validation
 
-### Storage permissions
+Run the frontend checks:
 
-The Media bucket must allow authenticated users to Read files. The client also
-adds authenticated file-read permission to newly uploaded files. If files were
-uploaded before this permission was configured, re-upload them or update their
-file permissions in Appwrite.
+```bash
+npm run lint
+npm run build
+```
 
-## Authentication
+Run the Function tests:
 
-Linkora creates Appwrite email/password accounts and starts an email session. Once authenticated, the client retrieves the related application profile through the Users table. If an account has a valid session but its profile document is missing, the app attempts to restore that profile using the authenticated account details.
+```bash
+cd functions/create-notification
+npm test
+node --check src/main.js
+```
+
+GitHub Actions runs the frontend lint/build and Function checks on pushes and
+pull requests. The current backend suite covers authorization, moderation,
+messaging, reports, Stories, media ownership, overlays, follower privacy,
+views, and user-owned audio.
 
 ## Deployment
 
-The repository includes `vercel.json` with a single-page-app rewrite rule. To deploy on Vercel:
+### Vercel
 
-1. Import this repository into Vercel.
-2. Set the same Appwrite environment variables from `.env.example` in the Vercel project settings.
-3. Set the Appwrite web platform hostname to the deployed domain.
-4. Deploy using Vercel's default Vite settings (`npm run build`, output directory `dist`).
+1. Import the repository into Vercel.
+2. Select the Vite framework preset.
+3. Use `npm run build` as the build command.
+4. Use `dist` as the output directory.
+5. Add the public `VITE_*` variables in the Vercel project settings.
+6. Add the deployed hostname as an Appwrite Web platform.
 
-## Scripts
+The repository’s [`vercel.json`](./vercel.json) includes the SPA rewrite needed
+for client-side routes.
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start the Vite development server |
-| `npm run build` | Type-check the project and build production assets |
-| `npm run preview` | Serve the production build locally |
-| `npm run lint` | Run ESLint over TypeScript source files |
+### Appwrite Sites
 
-## Troubleshooting
+The same Vite command and `dist` output directory can be used with Appwrite
+Sites. Configure the public environment variables in the Site settings and
+register the Site hostname as an Appwrite Web platform.
 
-**The application cannot sign in or create an account**
+## Repository structure
 
-Confirm the Appwrite endpoint, project ID, and web-platform hostname. Use a unique password that Appwrite does not flag as breached.
+```text
+src/
+├── _auth/                 # Authentication routes and forms
+├── _root/                 # Authenticated layouts and pages
+├── components/            # Shared UI and feature components
+├── context/               # Authentication state
+├── hooks/                 # Reusable application hooks
+├── lib/appwrite/          # Appwrite client and API operations
+├── lib/react-query/       # Query hooks and cache keys
+└── types/                 # Shared TypeScript contracts
 
-**Creating a post fails with a permission error**
+functions/create-notification/
+├── src/main.js            # Trusted multi-action Appwrite Function
+└── test/                  # Node regression tests
+```
 
-Check that the media bucket grants authenticated users **Create** permission. Also confirm the Posts table grants the required create/read/update/delete permissions.
+## Security principles
 
-**An uploaded image does not display**
-
-Use PNG, JPEG, or WebP. Existing `.ico` files are not supported as feed-image previews.
-Open the Media bucket permissions and enable **Read** for authenticated users
-(`Users`). Existing files may need to be re-uploaded after changing this
-permission; newly uploaded files receive authenticated read access directly.
+- Keep `APPWRITE_API_KEY`, `GEMINI_API_KEY`, and `AI_API_KEY` server-side.
+- Validate ownership and permissions in the Function, not only in the client.
+- Keep reports, messages, views, drafts, and preferences appropriately private.
+- Do not commit `.env.local` or deployment secrets.
+- Rotate any secret that appears in logs, screenshots, commits, or public issues.
 
 ## Contributing
 
-1. Fork the repository and create a focused branch from `main`.
-2. Make a small, well-scoped change.
-3. Run `npm run lint` and `npm run build` before opening a pull request.
-4. Describe the change, relevant setup updates, and manual testing in the pull request.
+1. Create a focused branch from `main`.
+2. Make a small, reviewable change.
+3. Run `npm run lint`, `npm run build`, and relevant Function tests.
+4. Update documentation for configuration or behavior changes.
+5. Open a pull request with a clear summary and verification notes.
 
 ## License
 
-This repository does not currently include a license. Do not assume permission for reuse, redistribution, or commercial use without authorization from the repository owner.
+This project is currently maintained as a private portfolio/application
+repository. Contact the author before reusing or redistributing the code.
 
 ## Author
 
-[Dishant Saini](https://github.com/DishantSaini55)
+**Dishant Saini**
+
+- GitHub: [@DishantSaini55](https://github.com/DishantSaini55)
+- Project: [Linkora-Web](https://github.com/DishantSaini55/Linkora-Web)
